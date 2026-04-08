@@ -5,7 +5,7 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible"
 import { useState } from "react"
-import { ChevronsUpDown, UnfoldLessIcon } from "@hugeicons/core-free-icons"
+import { UnfoldLessIcon } from "@hugeicons/core-free-icons"
 import { Card, CardContent } from "./ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -31,7 +31,7 @@ interface PortalLogProps {
 }
 
 export function PortalLog({ entries }: PortalLogProps) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   if (entries.length === 0) {
     return (
@@ -61,15 +61,21 @@ export function PortalLog({ entries }: PortalLogProps) {
                   {formatTime(sorted[0].intime)}
                 </span>
                 <span className="text-muted-foreground">→</span>
-                <span className={`font-mono tabular-nums ${"text-blue-400"}`}>
-                  {"Active"}
+                <span
+                  className={`font-mono tabular-nums ${
+                    !sorted[0].outtime ? "text-blue-400" : "text-foreground"
+                  }`}
+                >
+                  {!sorted[0].outtime
+                    ? "Active"
+                    : formatTime(sorted[0].outtime!)}
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span
                   className={`font-mono text-xs tabular-nums ${"text-blue-400"}`}
                 >
-                  {formatDuration(sorted[0].workingmins, true)}
+                  {formatDuration(sorted[0].workingmins, !sorted[0].outtime)}
                 </span>
                 <span
                   className={`font-mono text-xs tabular-nums ${"text-blue-400"}`}
@@ -78,7 +84,6 @@ export function PortalLog({ entries }: PortalLogProps) {
                     icon={UnfoldLessIcon}
                     className="h-4 text-muted-foreground"
                   />
-                  {/* <ChevronsUpDown /> */}
                 </span>
                 {sorted[0].ismanual === 1 && (
                   <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
