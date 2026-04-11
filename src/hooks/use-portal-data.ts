@@ -62,7 +62,9 @@ function getMockHrmsStatus(): HrmsConnectionStatus {
 
 // ── Hook ──
 
-export function usePortalData() {
+export function usePortalData(date?: string) {
+  const targetDate = date || new Date().toLocaleDateString("en-CA")
+  const isToday = targetDate === new Date().toLocaleDateString("en-CA")
   const [hrmsStatus, setHrmsStatus] = useState<HrmsConnectionStatus>({
     connected: false,
     userName: null,
@@ -90,7 +92,8 @@ export function usePortalData() {
     try {
       let data: PortalData
       if (isElectron) {
-        data = await window.electronAPI.hrmsGetHours()
+        const apiDate = `${targetDate}T00:00:00.000Z`
+        data = await window.electronAPI.hrmsGetHours(apiDate)
       } else {
         data = getMockPortalData()
       }
@@ -99,7 +102,7 @@ export function usePortalData() {
     } catch {
       setError("Failed to connect to portal")
     }
-  }, [])
+  }, [targetDate])
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -160,8 +163,9 @@ export function usePortalData() {
     refresh()
   }, [refresh])
 
-  // Auto-refresh every 5 minutes when connected
+  // Auto-refresh every 5 minutes — only for today
   useEffect(() => {
+    if (!isToday) return
     if (hrmsStatus.connected || hrmsStatus.hasCredentials) {
       refreshIntervalRef.current = setInterval(fetchHours, 5 * 60 * 1000)
     }
@@ -171,11 +175,11 @@ export function usePortalData() {
         refreshIntervalRef.current = null
       }
     }
-  }, [hrmsStatus.connected, hrmsStatus.hasCredentials, fetchHours])
+  }, [isToday, hrmsStatus.connected, hrmsStatus.hasCredentials, fetchHours])
 
-  // Live timer: update active session every minute
+  // Live timer: only for today
   useEffect(() => {
-    if (!portalData?.isCurrentlyIn) return
+    if (!isToday || !portalData?.isCurrentlyIn) return
     const interval = setInterval(() => {
       setPortalData((prev) => {
         if (!prev || !prev.isCurrentlyIn || !prev.lastInTime) return prev

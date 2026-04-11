@@ -2,17 +2,23 @@ import { ipcMain } from "electron"
 import {
   getEntriesByDate,
   getLastEntry,
+  getLastEntryByDate,
   insertEntry,
   updateEntry,
   deleteEntry,
   calculateTotalSecondsForDate,
   getEventCountForDate,
+  getWeekSummaries,
+  getAllDayMarks,
+  setDayMark,
+  deleteDayMark,
   getAllSettings,
   setSetting,
 } from "./database"
 import {
   hrmsLogin,
   hrmsGetWorkingHours,
+  hrmsGetWeekHours,
   getHrmsConnectionStatus,
   clearCredentials,
 } from "./hrms"
@@ -26,12 +32,13 @@ export function registerIpcHandlers(onDataChange: () => void): void {
     return getEntriesByDate(date)
   })
 
-  ipcMain.handle("get-status", () => {
-    const today = getLocalDate()
-    const lastEntry = getLastEntry()
-    const isIn = lastEntry?.type === "LOGIN"
-    const totalSecondsToday = calculateTotalSecondsForDate(today)
-    const eventCount = getEventCountForDate(today)
+  ipcMain.handle("get-status", (_event, date?: string) => {
+    const targetDate = date || getLocalDate()
+    const isToday = targetDate === getLocalDate()
+    const lastEntry = isToday ? getLastEntry() : getLastEntryByDate(targetDate)
+    const isIn = isToday ? lastEntry?.type === "LOGIN" : false
+    const totalSecondsToday = calculateTotalSecondsForDate(targetDate)
+    const eventCount = getEventCountForDate(targetDate)
 
     return {
       isIn,
@@ -40,6 +47,13 @@ export function registerIpcHandlers(onDataChange: () => void): void {
       eventCount,
     }
   })
+
+  ipcMain.handle(
+    "get-week-summaries",
+    (_event, startDate: string, endDate: string) => {
+      return getWeekSummaries(startDate, endDate)
+    }
+  )
 
   ipcMain.handle("punch-in", () => {
     const entry = insertEntry("LOGIN", "manual", "via manual")
@@ -136,6 +150,22 @@ export function registerIpcHandlers(onDataChange: () => void): void {
 
   ipcMain.handle("hrms-get-hours", async (_event, date?: string) => {
     return hrmsGetWorkingHours(date)
+  })
+
+  ipcMain.handle("get-day-marks", () => {
+    return getAllDayMarks()
+  })
+
+  ipcMain.handle("set-day-mark", (_event, date: string, mark: string) => {
+    setDayMark(date, mark)
+  })
+
+  ipcMain.handle("delete-day-mark", (_event, date: string) => {
+    deleteDayMark(date)
+  })
+
+  ipcMain.handle("hrms-get-week-hours", async (_event, dates: string[]) => {
+    return hrmsGetWeekHours(dates)
   })
 
   ipcMain.handle("hrms-get-status", () => {

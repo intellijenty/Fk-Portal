@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
@@ -5,20 +6,27 @@ import { PunchButtons } from "@/components/punch-buttons"
 import { ManualEntry } from "@/components/manual-entry"
 import { EventLog } from "@/components/event-log"
 import { PortalSection } from "@/components/portal-section"
+import { DayView } from "@/components/day-view"
+import { WeeklyCalendar } from "@/components/weekly-calendar"
+import { WeeklyStats } from "@/components/weekly-stats"
 import { usePunchData } from "@/hooks/use-punch-data"
+import { useWindowSize } from "@/hooks/use-window-size"
+import { useWeekData } from "@/hooks/use-week-data"
+import { useDayMarks } from "@/hooks/use-day-marks"
+import { getLocalDate, getWeekRange, formatDateDisplay } from "@/lib/week-utils"
+import { getYearMonth } from "@/lib/month-utils"
+import { MonthlyCalendar } from "@/components/monthly-calendar"
+import { MonthlyInsights } from "@/components/monthly-insights"
+import { useMonthData } from "@/hooks/use-month-data"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Timer02Icon } from "@hugeicons/core-free-icons"
 
-function formatDate(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-}
+const WIDE_BREAKPOINT = 860
+const ULTRA_WIDE_BREAKPOINT = 1200
 
-export default function App() {
+// ── Narrow layout: identical to original ──
+
+function NarrowLayout() {
   const {
     status,
     events,
@@ -41,10 +49,88 @@ export default function App() {
   }
 
   return (
-    <TooltipProvider>
-      <div className="flex h-screen flex-col bg-background">
-        {/* Header */}
-        <header className="shrink-0 px-5 pt-4 pb-2">
+    <div className="flex h-screen flex-col bg-background">
+      <header className="shrink-0 px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon
+            icon={Timer02Icon}
+            size={18}
+            className="text-muted-foreground"
+          />
+          <h1 className="text-base font-semibold tracking-tight">
+            Punch Monitor
+          </h1>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {formatDateDisplay(getLocalDate())}
+        </p>
+      </header>
+
+      <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-2 pb-5">
+        <div className="shrink-0">
+          <PortalSection />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Local
+          </h2>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+
+        <div className="grid shrink-0 grid-cols-2 gap-3">
+          <StatusCard status={status} />
+          <TotalCard
+            totalSeconds={status.totalSecondsToday}
+            isIn={status.isIn}
+          />
+        </div>
+
+        <div className="shrink-0">
+          <PunchButtons
+            isIn={status.isIn}
+            onPunchIn={punchIn}
+            onPunchOut={punchOut}
+          />
+        </div>
+
+        <div className="shrink-0">
+          <ManualEntry onAddEntry={addEntry} />
+        </div>
+
+        <EventLog
+          entries={events}
+          lastUpdated={lastUpdated}
+          onDelete={deleteEntry}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Wide layout: receives all shared state as props ──
+
+interface WideLayoutProps {
+  selectedDate: string
+  onSelectDate: (date: string) => void
+  dayMarks: Map<string, import("@/lib/week-utils").DayMark>
+  onCycleMark: (date: string) => void
+}
+
+function WideLayout({
+  selectedDate,
+  onSelectDate,
+  dayMarks,
+  onCycleMark,
+}: WideLayoutProps) {
+  const weekRange = getWeekRange(selectedDate)
+  const { summaries } = useWeekData(weekRange.start, weekRange.end)
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Left panel — calendar + stats */}
+      <aside className="scrollbar-hide flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
+        <div className="shrink-0 px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
             <HugeiconsIcon
               icon={Timer02Icon}
@@ -55,57 +141,147 @@ export default function App() {
               Punch Monitor
             </h1>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatDate()}
-          </p>
-        </header>
+        </div>
 
-        {/* Content */}
-        <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-2 pb-5">
-          {/* Portal section */}
-          <div className="shrink-0">
-            <PortalSection />
-          </div>
-
-          {/* Local section divider */}
-          <div className="flex shrink-0 items-center gap-2">
-            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Local
-            </h2>
-            <div className="h-px flex-1 bg-border/50" />
-          </div>
-
-          {/* Status + Total cards */}
-          <div className="grid shrink-0 grid-cols-2 gap-3">
-            <StatusCard status={status} />
-            <TotalCard
-              totalSeconds={status.totalSecondsToday}
-              isIn={status.isIn}
-            />
-          </div>
-
-          {/* Punch buttons */}
-          <div className="shrink-0">
-            <PunchButtons
-              isIn={status.isIn}
-              onPunchIn={punchIn}
-              onPunchOut={punchOut}
-            />
-          </div>
-
-          {/* Manual entry */}
-          <div className="shrink-0">
-            <ManualEntry onAddEntry={addEntry} />
-          </div>
-
-          {/* Event log - takes remaining space */}
-          <EventLog
-            entries={events}
-            lastUpdated={lastUpdated}
-            onDelete={deleteEntry}
+        <div className="px-5 pb-4">
+          <WeeklyCalendar
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            weekSummaries={summaries}
+            dayMarks={dayMarks}
           />
         </div>
-      </div>
+
+        <div className="mx-5 h-px bg-border/50" />
+
+        <div className="flex-1 px-5 py-4">
+          <WeeklyStats
+            weekSummaries={summaries}
+            selectedDate={selectedDate}
+            dayMarks={dayMarks}
+            onCycleMark={onCycleMark}
+          />
+        </div>
+      </aside>
+
+      {/* Right panel — day view */}
+      <main className="flex w-[480px] shrink-0 flex-col overflow-hidden">
+        <DayView date={selectedDate} showHeader />
+      </main>
+    </div>
+  )
+}
+
+// ── Ultra-wide layout: month + week + day ──
+
+function UltraWideLayout({
+  selectedDate,
+  onSelectDate,
+  dayMarks,
+  onCycleMark,
+}: WideLayoutProps) {
+  const yearMonth = getYearMonth(selectedDate)
+  const weekRange = getWeekRange(selectedDate)
+  const { summaries: monthSummaries } = useMonthData(yearMonth)
+  const { summaries: weekSummaries } = useWeekData(weekRange.start, weekRange.end)
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Left — monthly calendar + insights */}
+      <aside className="scrollbar-hide flex w-[300px] shrink-0 flex-col overflow-y-auto border-r border-border/50">
+        <div className="shrink-0 px-4 pt-5 pb-3">
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon
+              icon={Timer02Icon}
+              size={18}
+              className="text-muted-foreground"
+            />
+            <h1 className="text-base font-semibold tracking-tight">
+              Punch Monitor
+            </h1>
+          </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <MonthlyCalendar
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            monthSummaries={monthSummaries}
+            dayMarks={dayMarks}
+          />
+        </div>
+
+        <div className="mx-4 h-px bg-border/50" />
+
+        <div className="flex-1 px-4 py-3">
+          <MonthlyInsights
+            monthSummaries={monthSummaries}
+            selectedDate={selectedDate}
+            dayMarks={dayMarks}
+            onSelectDate={onSelectDate}
+          />
+        </div>
+      </aside>
+
+      {/* Middle — weekly calendar + stats */}
+      <section className="scrollbar-hide flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
+        <div className="px-5 pt-5 pb-4">
+          <WeeklyCalendar
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            weekSummaries={weekSummaries}
+            dayMarks={dayMarks}
+          />
+        </div>
+
+        <div className="mx-5 h-px bg-border/50" />
+
+        <div className="flex-1 px-5 py-4">
+          <WeeklyStats
+            weekSummaries={weekSummaries}
+            selectedDate={selectedDate}
+            dayMarks={dayMarks}
+            onCycleMark={onCycleMark}
+          />
+        </div>
+      </section>
+
+      {/* Right — day view */}
+      <main className="flex w-[480px] shrink-0 flex-col overflow-hidden">
+        <DayView date={selectedDate} showHeader />
+      </main>
+    </div>
+  )
+}
+
+// ── Root: owns all shared state, survives layout transitions ──
+
+export default function App() {
+  const { width } = useWindowSize()
+  const isUltraWide = width >= ULTRA_WIDE_BREAKPOINT
+  const isWide = width >= WIDE_BREAKPOINT
+  const [selectedDate, setSelectedDate] = useState(getLocalDate())
+  const { dayMarks, cycleMark } = useDayMarks()
+
+  return (
+    <TooltipProvider>
+      {isUltraWide ? (
+        <UltraWideLayout
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          dayMarks={dayMarks}
+          onCycleMark={cycleMark}
+        />
+      ) : isWide ? (
+        <WideLayout
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          dayMarks={dayMarks}
+          onCycleMark={cycleMark}
+        />
+      ) : (
+        <NarrowLayout />
+      )}
     </TooltipProvider>
   )
 }

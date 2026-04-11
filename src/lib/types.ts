@@ -46,6 +46,13 @@ export interface AppSettings {
   closeToTray: boolean
 }
 
+export interface WeekDaySummary {
+  date: string
+  totalSeconds: number
+  eventCount: number
+  missPunchCount: number
+}
+
 // ── Portal / HRMS types ──
 
 export interface PortalEntry {
@@ -76,7 +83,8 @@ export interface HrmsConnectionStatus {
 
 export interface ElectronAPI {
   getEvents: (date: string) => Promise<PunchEntry[]>
-  getStatus: () => Promise<PunchStatus>
+  getStatus: (date?: string) => Promise<PunchStatus>
+  getWeekSummaries: (startDate: string, endDate: string) => Promise<WeekDaySummary[]>
   punchIn: () => Promise<PunchEntry>
   punchOut: () => Promise<PunchEntry>
   addEntry: (entry: {
@@ -94,6 +102,11 @@ export interface ElectronAPI {
   updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>
   onEventUpdate: (callback: () => void) => () => void
 
+  // Day marks
+  getDayMarks: () => Promise<{ date: string; mark: string }[]>
+  setDayMark: (date: string, mark: string) => Promise<void>
+  deleteDayMark: (date: string) => Promise<void>
+
   // HRMS portal
   hrmsLogin: (
     email: string,
@@ -102,6 +115,7 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; message?: string; userName?: string; userId?: number }>
   hrmsLogout: () => Promise<void>
   hrmsGetHours: (date?: string) => Promise<PortalData>
+  hrmsGetWeekHours: (dates: string[]) => Promise<WeekDaySummary[]>
   hrmsGetStatus: () => Promise<HrmsConnectionStatus>
 }
 

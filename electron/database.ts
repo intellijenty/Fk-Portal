@@ -46,6 +46,11 @@ export function initDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date);
     CREATE INDEX IF NOT EXISTS idx_entries_timestamp ON entries(timestamp);
 
+    CREATE TABLE IF NOT EXISTS day_marks (
+      date TEXT PRIMARY KEY,
+      mark TEXT NOT NULL CHECK(mark IN ('mp', 'fl', 'hl'))
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -176,6 +181,39 @@ export function getEventCountForDate(date: string): number {
     .prepare("SELECT COUNT(*) as count FROM entries WHERE date = ?")
     .get(date) as { count: number }
   return result.count
+}
+
+export function getAllDayMarks(): { date: string; mark: string }[] {
+  return db
+    .prepare("SELECT date, mark FROM day_marks ORDER BY date ASC")
+    .all() as { date: string; mark: string }[]
+}
+
+export function setDayMark(date: string, mark: string): void {
+  db.prepare(
+    "INSERT OR REPLACE INTO day_marks (date, mark) VALUES (?, ?)"
+  ).run(date, mark)
+}
+
+export function deleteDayMark(date: string): void {
+  db.prepare("DELETE FROM day_marks WHERE date = ?").run(date)
+}
+
+export function getWeekSummaries(
+  startDate: string,
+  endDate: string
+): { date: string; totalSeconds: number; eventCount: number }[] {
+  const dates = db
+    .prepare(
+      "SELECT DISTINCT date FROM entries WHERE date >= ? AND date <= ? ORDER BY date ASC"
+    )
+    .all(startDate, endDate) as { date: string }[]
+
+  return dates.map(({ date }) => ({
+    date,
+    totalSeconds: calculateTotalSecondsForDate(date),
+    eventCount: getEventCountForDate(date),
+  }))
 }
 
 export function getSetting(key: string): string | undefined {

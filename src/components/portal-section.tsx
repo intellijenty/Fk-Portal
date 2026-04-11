@@ -14,7 +14,11 @@ function formatTime(date: Date): string {
   })
 }
 
-export function PortalSection() {
+interface PortalSectionProps {
+  date?: string
+}
+
+export function PortalSection({ date }: PortalSectionProps) {
   const {
     hrmsStatus,
     portalData,
@@ -24,7 +28,7 @@ export function PortalSection() {
     login,
     logout,
     refresh,
-  } = usePortalData()
+  } = usePortalData(date)
 
   // Show controls when connected OR when credentials exist (auto-reconnecting after restart)
   const showControls = hrmsStatus.connected || hrmsStatus.hasCredentials

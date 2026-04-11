@@ -108,7 +108,10 @@ function mockPunch(type: EntryType): void {
 
 // ── Hook ──
 
-export function usePunchData() {
+export function usePunchData(date?: string) {
+  const targetDate = date || getLocalDate()
+  const isToday = targetDate === getLocalDate()
+
   const [status, setStatus] = useState<PunchStatus | null>(null)
   const [events, setEvents] = useState<PunchEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,14 +122,14 @@ export function usePunchData() {
     try {
       if (isElectron) {
         const [newStatus, newEvents] = await Promise.all([
-          window.electronAPI.getStatus(),
-          window.electronAPI.getEvents(getLocalDate()),
+          window.electronAPI.getStatus(targetDate),
+          window.electronAPI.getEvents(targetDate),
         ])
         setStatus(newStatus)
         setEvents(newEvents)
       } else {
         setStatus(getMockStatus())
-        setEvents(getMockEntriesByDate(getLocalDate()))
+        setEvents(getMockEntriesByDate(targetDate))
       }
       setLastUpdated(new Date())
     } catch (err) {
@@ -134,10 +137,11 @@ export function usePunchData() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [targetDate])
 
-  // Initial load
+  // Re-fetch when date changes
   useEffect(() => {
+    setLoading(true)
     refresh()
   }, [refresh])
 
@@ -150,23 +154,22 @@ export function usePunchData() {
     return unsubscribe
   }, [refresh])
 
-  // Live timer: update total seconds every second when punched in
+  // Live timer: only tick when viewing today and punched in
   useEffect(() => {
-    if (status?.isIn) {
-      timerRef.current = setInterval(() => {
-        setStatus((prev) => {
-          if (!prev || !prev.isIn) return prev
-          return { ...prev, totalSecondsToday: prev.totalSecondsToday + 1 }
-        })
-      }, 1000)
-    }
+    if (!isToday || !status?.isIn) return
+    timerRef.current = setInterval(() => {
+      setStatus((prev) => {
+        if (!prev || !prev.isIn) return prev
+        return { ...prev, totalSecondsToday: prev.totalSecondsToday + 1 }
+      })
+    }, 1000)
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
         timerRef.current = null
       }
     }
-  }, [status?.isIn])
+  }, [isToday, status?.isIn])
 
   const punchIn = useCallback(async () => {
     if (isElectron) {
@@ -220,6 +223,7 @@ export function usePunchData() {
     events,
     loading,
     lastUpdated,
+    isToday,
     punchIn,
     punchOut,
     addEntry,

@@ -236,3 +236,57 @@ export async function hrmsGetWorkingHours(
     return { ...empty, message }
   }
 }
+
+export interface WeekDayPortalSummary {
+  date: string
+  totalMinutes: number
+  missPunchCount: number
+  sessionCount: number
+}
+
+export async function hrmsGetWeekHours(
+  dates: string[]
+): Promise<WeekDayPortalSummary[]> {
+  const today = new Date().toLocaleDateString("en-CA")
+
+  const results = await Promise.all(
+    dates.map(async (date) => {
+      const apiDate = `${date}T00:00:00.000Z`
+      const result = await hrmsGetWorkingHours(apiDate)
+
+      if (!result.success) {
+        return { date, totalMinutes: 0, missPunchCount: 0, sessionCount: 0 }
+      }
+
+      let totalMinutes = 0
+      let missPunchCount = 0
+
+      for (const entry of result.entries) {
+        if (entry.outtime === null && date !== today) {
+          // Past date with null outtime = miss punch — exclude
+          missPunchCount++
+          continue
+        }
+        if (entry.workingmins != null) {
+          totalMinutes += entry.workingmins
+        }
+        if (entry.outtime === null && date === today) {
+          // Currently checked in — add live minutes
+          const active = Math.floor(
+            (Date.now() - new Date(entry.intime).getTime()) / 60000
+          )
+          totalMinutes += active
+        }
+      }
+
+      return {
+        date,
+        totalMinutes,
+        missPunchCount,
+        sessionCount: result.entries.length,
+      }
+    })
+  )
+
+  return results
+}
