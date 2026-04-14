@@ -19,7 +19,8 @@ import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { MonthlyInsights } from "@/components/monthly-insights"
 import { useMonthData } from "@/hooks/use-month-data"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Timer02Icon } from "@hugeicons/core-free-icons"
+import { Timer02Icon, Globe02Icon } from "@hugeicons/core-free-icons"
+import { PortalStatusProvider, usePortalStatusContext } from "@/contexts/portal-status"
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
@@ -125,11 +126,12 @@ function WideLayout({
 }: WideLayoutProps) {
   const weekRange = getWeekRange(selectedDate)
   const { summaries } = useWeekData(weekRange.start, weekRange.end)
+  const { portalConnected } = usePortalStatusContext()
 
   return (
     <div className="flex h-screen bg-background">
       {/* Left panel — calendar + stats */}
-      <aside className="scrollbar-hide flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
+      <aside className="scrollbar-hide relative flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
             <HugeiconsIcon
@@ -162,6 +164,27 @@ function WideLayout({
             onCycleMark={onCycleMark}
           />
         </div>
+
+        {/* Portal blur overlay */}
+        {!portalConnected && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-[3px]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/40">
+              <HugeiconsIcon
+                icon={Globe02Icon}
+                size={24}
+                className="text-muted-foreground/60"
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground/70">
+                Portal data unavailable
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground/70">
+                Connect via the Portal section →
+              </p>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Right panel — day view */}
@@ -184,11 +207,12 @@ function UltraWideLayout({
   const weekRange = getWeekRange(selectedDate)
   const { summaries: monthSummaries } = useMonthData(yearMonth)
   const { summaries: weekSummaries } = useWeekData(weekRange.start, weekRange.end)
+  const { portalConnected } = usePortalStatusContext()
 
   return (
     <div className="flex h-screen bg-background">
       {/* Left — monthly calendar + insights */}
-      <aside className="scrollbar-hide flex w-[300px] shrink-0 flex-col overflow-y-auto border-r border-border/50">
+      <aside className="scrollbar-hide relative flex w-[300px] shrink-0 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-4 pt-5 pb-3">
           <div className="flex items-center gap-2">
             <HugeiconsIcon
@@ -221,10 +245,31 @@ function UltraWideLayout({
             onSelectDate={onSelectDate}
           />
         </div>
+
+        {/* Portal blur overlay */}
+        {!portalConnected && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-[3px]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/40">
+              <HugeiconsIcon
+                icon={Globe02Icon}
+                size={22}
+                className="text-muted-foreground/60"
+              />
+            </div>
+            <div className="text-center px-4">
+              <p className="text-sm font-medium text-foreground/70">
+                Monthly data
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground/70">
+                Connect to portal to view
+              </p>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Middle — weekly calendar + stats */}
-      <section className="scrollbar-hide flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
+      <section className="scrollbar-hide relative flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
         <div className="px-5 pt-5 pb-4">
           <WeeklyCalendar
             selectedDate={selectedDate}
@@ -244,6 +289,27 @@ function UltraWideLayout({
             onCycleMark={onCycleMark}
           />
         </div>
+
+        {/* Portal blur overlay */}
+        {!portalConnected && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-[3px]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/40">
+              <HugeiconsIcon
+                icon={Globe02Icon}
+                size={22}
+                className="text-muted-foreground/60"
+              />
+            </div>
+            <div className="text-center px-4">
+              <p className="text-sm font-medium text-foreground/70">
+                Weekly stats
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground/70">
+                Connect to portal to view
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Right — day view */}
@@ -265,23 +331,25 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      {isUltraWide ? (
-        <UltraWideLayout
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          dayMarks={dayMarks}
-          onCycleMark={cycleMark}
-        />
-      ) : isWide ? (
-        <WideLayout
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          dayMarks={dayMarks}
-          onCycleMark={cycleMark}
-        />
-      ) : (
-        <NarrowLayout />
-      )}
+      <PortalStatusProvider>
+        {isUltraWide ? (
+          <UltraWideLayout
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            dayMarks={dayMarks}
+            onCycleMark={cycleMark}
+          />
+        ) : isWide ? (
+          <WideLayout
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            dayMarks={dayMarks}
+            onCycleMark={cycleMark}
+          />
+        ) : (
+          <NarrowLayout />
+        )}
+      </PortalStatusProvider>
     </TooltipProvider>
   )
 }

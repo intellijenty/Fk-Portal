@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import type { WeekDaySummary } from "@/lib/types"
 import { getMonthRange, getWeekdaysInMonth } from "@/lib/month-utils"
 import { getLocalDate } from "@/lib/week-utils"
+import { usePortalStatusContext } from "@/contexts/portal-status"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -18,6 +19,7 @@ export function useMonthData(yearMonth: string) {
   const [summaries, setSummaries] = useState<WeekDaySummary[]>([])
   const [loading, setLoading] = useState(true)
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { portalConnected } = usePortalStatusContext()
 
   const today = getLocalDate()
   const { start, end } = getMonthRange(yearMonth)
@@ -56,9 +58,10 @@ export function useMonthData(yearMonth: string) {
   }, [yearMonth, today])
 
   useEffect(() => {
+    if (!portalConnected) return
     setLoading(true)
     refresh()
-  }, [refresh])
+  }, [refresh, portalConnected])
 
   useEffect(() => {
     if (!monthIncludesToday) return

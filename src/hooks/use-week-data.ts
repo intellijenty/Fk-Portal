@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { WeekDaySummary } from "@/lib/types"
 import { getDaysOfWeek, getLocalDate } from "@/lib/week-utils"
+import { usePortalStatusContext } from "@/contexts/portal-status"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -21,6 +22,7 @@ export function useWeekData(weekStart: string, weekEnd: string) {
   const [summaries, setSummaries] = useState<WeekDaySummary[]>([])
   const [loading, setLoading] = useState(true)
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { portalConnected } = usePortalStatusContext()
 
   const today = getLocalDate()
   const weekIncludesToday = weekStart <= today && weekEnd >= today
@@ -53,9 +55,10 @@ export function useWeekData(weekStart: string, weekEnd: string) {
   }, [weekStart, today])
 
   useEffect(() => {
+    if (!portalConnected) return
     setLoading(true)
     refresh()
-  }, [refresh])
+  }, [refresh, portalConnected])
 
   // Auto-refresh every 5 min if week includes today
   useEffect(() => {

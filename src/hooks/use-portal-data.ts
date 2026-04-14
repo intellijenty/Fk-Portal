@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { PortalData, PortalEntry, HrmsConnectionStatus } from "@/lib/types"
+import { usePortalStatusContext } from "@/contexts/portal-status"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -65,6 +66,7 @@ function getMockHrmsStatus(): HrmsConnectionStatus {
 export function usePortalData(date?: string) {
   const targetDate = date || new Date().toLocaleDateString("en-CA")
   const isToday = targetDate === new Date().toLocaleDateString("en-CA")
+  const { setPortalConnected } = usePortalStatusContext()
   const [hrmsStatus, setHrmsStatus] = useState<HrmsConnectionStatus>({
     connected: false,
     userName: null,
@@ -81,12 +83,14 @@ export function usePortalData(date?: string) {
     if (isElectron) {
       const status = await window.electronAPI.hrmsGetStatus()
       setHrmsStatus(status)
+      setPortalConnected(status.connected || status.hasCredentials)
       return status
     }
     const status = getMockHrmsStatus()
     setHrmsStatus(status)
+    setPortalConnected(status.connected || status.hasCredentials)
     return status
-  }, [])
+  }, [setPortalConnected])
 
   const fetchHours = useCallback(async () => {
     try {
@@ -156,7 +160,8 @@ export function usePortalData(date?: string) {
     })
     setPortalData(null)
     setError(null)
-  }, [])
+    setPortalConnected(false)
+  }, [setPortalConnected])
 
   // Initial load
   useEffect(() => {

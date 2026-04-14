@@ -51,7 +51,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
       <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-3 pb-5">
         {/* Portal */}
         <div className="shrink-0">
-          <PortalSection date={date} />
+          <PortalSection date={date} variant="wide" />
         </div>
 
         {/* Local divider */}
