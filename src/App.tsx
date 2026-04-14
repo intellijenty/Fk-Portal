@@ -21,6 +21,7 @@ import { useMonthData } from "@/hooks/use-month-data"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Timer02Icon, Globe02Icon } from "@hugeicons/core-free-icons"
 import { PortalStatusProvider, usePortalStatusContext } from "@/contexts/portal-status"
+import { SettingsDialog } from "@/components/settings-dialog"
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
@@ -133,15 +134,18 @@ function WideLayout({
       {/* Left panel — calendar + stats */}
       <aside className="scrollbar-hide relative flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-5 pt-5 pb-3">
-          <div className="flex items-center gap-2">
-            <HugeiconsIcon
-              icon={Timer02Icon}
-              size={18}
-              className="text-muted-foreground"
-            />
-            <h1 className="text-base font-semibold tracking-tight">
-              Punch Monitor
-            </h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon
+                icon={Timer02Icon}
+                size={18}
+                className="text-muted-foreground"
+              />
+              <h1 className="text-base font-semibold tracking-tight">
+                Punch Monitor
+              </h1>
+            </div>
+            <SettingsDialog />
           </div>
         </div>
 
@@ -214,15 +218,18 @@ function UltraWideLayout({
       {/* Left — monthly calendar + insights */}
       <aside className="scrollbar-hide relative flex w-[300px] shrink-0 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-4 pt-5 pb-3">
-          <div className="flex items-center gap-2">
-            <HugeiconsIcon
-              icon={Timer02Icon}
-              size={18}
-              className="text-muted-foreground"
-            />
-            <h1 className="text-base font-semibold tracking-tight">
-              Punch Monitor
-            </h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon
+                icon={Timer02Icon}
+                size={18}
+                className="text-muted-foreground"
+              />
+              <h1 className="text-base font-semibold tracking-tight">
+                Punch Monitor
+              </h1>
+            </div>
+            <SettingsDialog />
           </div>
         </div>
 
