@@ -4,11 +4,12 @@ import { fileURLToPath } from "url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-import { initDatabase, insertEntry, getLastEntry, closeDatabase, calculateTotalSecondsForDate } from "./database"
+import { initDatabase, insertEntry, getLastEntry, closeDatabase, calculateTotalSecondsForDate, getAllSettings } from "./database"
 import { readHeartbeat, startHeartbeat, stopHeartbeat, clearHeartbeat } from "./heartbeat"
 import { startMonitoring, flushPendingLogout } from "./monitor"
 import { createTray, updateTrayStatus, destroyTray } from "./tray"
 import { registerIpcHandlers } from "./ipc"
+import { registerHotkey, unregisterHotkey } from "./hotkey"
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -155,11 +156,20 @@ if (!gotLock) {
     // Start heartbeat
     startHeartbeat(60)
 
-    // Register IPC — pass notifyRenderer so mutations update renderer + tray
-    registerIpcHandlers(notifyRenderer)
+    // Register IPC — pass notifyRenderer + window getter
+    registerIpcHandlers(notifyRenderer, () => mainWindow)
 
     // Create window
     createWindow()
+
+    // Register global hotkey from stored settings
+    const raw = getAllSettings()
+    registerHotkey(
+      () => mainWindow,
+      raw.hotkeyCombo || "Alt+Space",
+      (raw.hotkeyMode || "press") as "press" | "push",
+      raw.hotkeyEnabled !== "false"
+    )
 
     // Create tray
     createTray(mainWindow, handlePunchIn, handlePunchOut, handleQuit)
@@ -175,6 +185,7 @@ if (!gotLock) {
 
   app.on("before-quit", () => {
     isQuitting = true
+    unregisterHotkey()
   })
 
   app.on("activate", () => {

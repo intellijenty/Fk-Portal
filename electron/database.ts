@@ -66,6 +66,10 @@ export function initDatabase(): void {
     heartbeatSeconds: "60",
     closeToTray: "true",
     hrmsBaseUrl: "https://roimaint.in:7000/api",
+    // Hotkey
+    hotkeyCombo: "Alt+Space",
+    hotkeyMode: "press",
+    hotkeyEnabled: "true",
   }
 
   const insertSetting = db.prepare(

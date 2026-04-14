@@ -43,4 +43,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   hrmsGetWeekHours: (dates: string[]) =>
     ipcRenderer.invoke("hrms-get-week-hours", dates),
   hrmsGetStatus: () => ipcRenderer.invoke("hrms-get-status"),
+
+  // Hotkey
+  onHotkeyPushShow: (callback: (triggerKey: string) => void) => {
+    const listener = (_: unknown, triggerKey: string) => callback(triggerKey)
+    ipcRenderer.on("hotkey:push-show", listener)
+    return () => ipcRenderer.removeListener("hotkey:push-show", listener)
+  },
+  windowHide: () => ipcRenderer.invoke("window-hide"),
 })

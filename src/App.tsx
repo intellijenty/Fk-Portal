@@ -22,6 +22,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Timer02Icon, Globe02Icon } from "@hugeicons/core-free-icons"
 import { PortalStatusProvider, usePortalStatusContext } from "@/contexts/portal-status"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
@@ -335,6 +336,7 @@ export default function App() {
   const isWide = width >= WIDE_BREAKPOINT
   const [selectedDate, setSelectedDate] = useState(getLocalDate())
   const { dayMarks, cycleMark } = useDayMarks()
+  useHotkeyBehavior()
 
   return (
     <TooltipProvider>

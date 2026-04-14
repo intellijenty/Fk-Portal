@@ -1,4 +1,5 @@
-import { ipcMain } from "electron"
+import { ipcMain, BrowserWindow } from "electron"
+import { registerHotkey } from "./hotkey"
 import {
   getEntriesByDate,
   getLastEntry,
@@ -27,7 +28,24 @@ function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
 }
 
-export function registerIpcHandlers(onDataChange: () => void): void {
+function buildSettingsResponse(raw: Record<string, string>) {
+  return {
+    dailyTargetMinutes: parseInt(raw.dailyTargetMinutes || "480", 10),
+    autoStart: raw.autoStart === "true",
+    startMinimized: raw.startMinimized === "true",
+    debounceSeconds: parseInt(raw.debounceSeconds || "15", 10),
+    heartbeatSeconds: parseInt(raw.heartbeatSeconds || "60", 10),
+    closeToTray: raw.closeToTray === "true",
+    hotkeyCombo: raw.hotkeyCombo || "Alt+Space",
+    hotkeyMode: (raw.hotkeyMode || "press") as "press" | "push",
+    hotkeyEnabled: raw.hotkeyEnabled !== "false",
+  }
+}
+
+export function registerIpcHandlers(
+  onDataChange: () => void,
+  getWindow: () => BrowserWindow | null
+): void {
   ipcMain.handle("get-events", (_event, date: string) => {
     return getEntriesByDate(date)
   })
@@ -100,15 +118,7 @@ export function registerIpcHandlers(onDataChange: () => void): void {
   })
 
   ipcMain.handle("get-settings", () => {
-    const raw = getAllSettings()
-    return {
-      dailyTargetMinutes: parseInt(raw.dailyTargetMinutes || "480", 10),
-      autoStart: raw.autoStart === "true",
-      startMinimized: raw.startMinimized === "true",
-      debounceSeconds: parseInt(raw.debounceSeconds || "15", 10),
-      heartbeatSeconds: parseInt(raw.heartbeatSeconds || "60", 10),
-      closeToTray: raw.closeToTray === "true",
-    }
+    return buildSettingsResponse(getAllSettings())
   })
 
   ipcMain.handle(
@@ -117,17 +127,29 @@ export function registerIpcHandlers(onDataChange: () => void): void {
       for (const [key, value] of Object.entries(settings)) {
         setSetting(key, String(value))
       }
-      const raw = getAllSettings()
-      return {
-        dailyTargetMinutes: parseInt(raw.dailyTargetMinutes || "480", 10),
-        autoStart: raw.autoStart === "true",
-        startMinimized: raw.startMinimized === "true",
-        debounceSeconds: parseInt(raw.debounceSeconds || "15", 10),
-        heartbeatSeconds: parseInt(raw.heartbeatSeconds || "60", 10),
-        closeToTray: raw.closeToTray === "true",
+      // Re-register hotkey whenever hotkey settings change
+      const HOTKEY_KEYS = ["hotkeyCombo", "hotkeyMode", "hotkeyEnabled"]
+      if (HOTKEY_KEYS.some((k) => k in settings)) {
+        const raw = getAllSettings()
+        const win = getWindow()
+        if (win) {
+          registerHotkey(
+            () => win,
+            raw.hotkeyCombo || "Alt+Space",
+            (raw.hotkeyMode || "press") as "press" | "push",
+            raw.hotkeyEnabled !== "false"
+          )
+        }
       }
+      return buildSettingsResponse(getAllSettings())
     }
   )
+
+  // Hide window — used by push-to-display mode when trigger key is released
+  ipcMain.handle("window-hide", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    win?.hide()
+  })
 
   // ── HRMS portal handlers ──
 

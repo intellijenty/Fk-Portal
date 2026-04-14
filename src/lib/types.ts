@@ -44,6 +44,9 @@ export interface AppSettings {
   debounceSeconds: number
   heartbeatSeconds: number
   closeToTray: boolean
+  hotkeyCombo: string
+  hotkeyMode: "press" | "push"
+  hotkeyEnabled: boolean
 }
 
 export interface WeekDaySummary {
@@ -117,6 +120,10 @@ export interface ElectronAPI {
   hrmsGetHours: (date?: string) => Promise<PortalData>
   hrmsGetWeekHours: (dates: string[]) => Promise<WeekDaySummary[]>
   hrmsGetStatus: () => Promise<HrmsConnectionStatus>
+
+  // Hotkey / window
+  onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void
+  windowHide: () => Promise<void>
 }
 
 declare global {
