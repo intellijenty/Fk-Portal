@@ -13,13 +13,14 @@ import { usePunchData } from "@/hooks/use-punch-data"
 import { useWindowSize } from "@/hooks/use-window-size"
 import { useWeekData } from "@/hooks/use-week-data"
 import { useDayMarks } from "@/hooks/use-day-marks"
-import { getLocalDate, getWeekRange, formatDateDisplay } from "@/lib/week-utils"
+import { getLocalDate, getWeekRange } from "@/lib/week-utils"
 import { getYearMonth } from "@/lib/month-utils"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { MonthlyInsights } from "@/components/monthly-insights"
 import { useMonthData } from "@/hooks/use-month-data"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Timer02Icon, Globe02Icon } from "@hugeicons/core-free-icons"
+import { Timer02Icon, Globe02Icon, Calendar02Icon } from "@hugeicons/core-free-icons"
+import { NarrowBalanceChips } from "@/components/narrow-insight-bar"
 import { PortalStatusProvider, usePortalStatusContext } from "@/contexts/portal-status"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
@@ -51,22 +52,34 @@ function NarrowLayout() {
     )
   }
 
+  // Format: "Wednesday, 15 April"
+  const headerDate = (() => {
+    const d = new Date()
+    const weekday = d.toLocaleDateString("en-US", { weekday: "long" })
+    const day = d.getDate()
+    const month = d.toLocaleDateString("en-US", { month: "short" })
+    const year = d.getFullYear()
+    return `${weekday}, ${day} ${month} ${year}`
+  })()
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <header className="shrink-0 px-5 pt-4 pb-2">
-        <div className="flex items-center gap-2">
-          <HugeiconsIcon
-            icon={Timer02Icon}
-            size={18}
-            className="text-muted-foreground"
-          />
-          <h1 className="text-base font-semibold tracking-tight">
-            Punch Monitor
-          </h1>
+        <div className="flex items-center justify-between">
+          {/* Date */}
+          <div className="flex items-center gap-1.5">
+            <HugeiconsIcon
+              icon={Calendar02Icon}
+              size={14}
+              className="shrink-0 text-muted-foreground"
+            />
+            <span className="text-sm font-medium tracking-tight">
+              {headerDate}
+            </span>
+          </div>
+          {/* Balance chips — hidden when not connected */}
+          <NarrowBalanceChips />
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDateDisplay(getLocalDate())}
-        </p>
       </header>
 
       <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-2 pb-5">
