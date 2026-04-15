@@ -1,6 +1,5 @@
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
-import { PunchButtons } from "@/components/punch-buttons"
 import { ManualEntry } from "@/components/manual-entry"
 import { EventLog } from "@/components/event-log"
 import { PortalSection } from "@/components/portal-section"
@@ -19,9 +18,8 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
     loading,
     lastUpdated,
     isToday,
-    punchIn,
-    punchOut,
     addEntry,
+    editEntry,
     deleteEntry,
   } = usePunchData(date)
 
@@ -68,29 +66,17 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
           <TotalCard totalSeconds={status.totalSecondsToday} isIn={status.isIn} />
         </div>
 
-        {/* Punch buttons — today only */}
-        {isToday && (
-          <div className="shrink-0">
-            <PunchButtons
-              isIn={status.isIn}
-              onPunchIn={punchIn}
-              onPunchOut={punchOut}
-            />
-          </div>
-        )}
-
-        {/* Manual entry — today only */}
-        {isToday && (
-          <div className="shrink-0">
-            <ManualEntry onAddEntry={addEntry} />
-          </div>
-        )}
+        {/* Manual entry — available for any day */}
+        <div className="shrink-0">
+          <ManualEntry date={date} onAddEntry={addEntry} />
+        </div>
 
         {/* Event log */}
         <EventLog
           entries={events}
           lastUpdated={lastUpdated}
           onDelete={deleteEntry}
+          onEdit={editEntry}
         />
       </div>
     </div>

@@ -2,7 +2,6 @@ import { useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
-import { PunchButtons } from "@/components/punch-buttons"
 import { ManualEntry } from "@/components/manual-entry"
 import { EventLog } from "@/components/event-log"
 import { PortalSection } from "@/components/portal-section"
@@ -36,9 +35,8 @@ function NarrowLayout() {
     events,
     loading,
     lastUpdated,
-    punchIn,
-    punchOut,
     addEntry,
+    editEntry,
     deleteEntry,
   } = usePunchData()
 
@@ -103,21 +101,17 @@ function NarrowLayout() {
         </div>
 
         <div className="shrink-0">
-          <PunchButtons
-            isIn={status.isIn}
-            onPunchIn={punchIn}
-            onPunchOut={punchOut}
+          <ManualEntry
+            date={new Date().toLocaleDateString("en-CA")}
+            onAddEntry={addEntry}
           />
-        </div>
-
-        <div className="shrink-0">
-          <ManualEntry onAddEntry={addEntry} />
         </div>
 
         <EventLog
           entries={events}
           lastUpdated={lastUpdated}
           onDelete={deleteEntry}
+          onEdit={editEntry}
         />
       </div>
     </div>

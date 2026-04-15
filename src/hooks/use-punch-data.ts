@@ -90,6 +90,15 @@ function mockDeleteEntry(id: number): void {
   mockEntries = mockEntries.filter((e) => e.id !== id)
 }
 
+function mockEditEntry(id: number, updates: { timestamp?: string }): void {
+  initMockEntries()
+  mockEntries = mockEntries.map((e) =>
+    e.id === id
+      ? { ...e, ...(updates.timestamp ? { timestamp: updates.timestamp } : {}), modified_at: new Date().toISOString() }
+      : e
+  )
+}
+
 function mockPunch(type: EntryType): void {
   initMockEntries()
   const now = new Date()
@@ -206,6 +215,18 @@ export function usePunchData(date?: string) {
     [refresh]
   )
 
+  const editEntry = useCallback(
+    async (id: number, updates: { timestamp?: string; notes?: string }) => {
+      if (isElectron) {
+        await window.electronAPI.editEntry(id, updates)
+      } else {
+        mockEditEntry(id, updates)
+      }
+      await refresh()
+    },
+    [refresh]
+  )
+
   const deleteEntry = useCallback(
     async (id: number) => {
       if (isElectron) {
@@ -227,6 +248,7 @@ export function usePunchData(date?: string) {
     punchIn,
     punchOut,
     addEntry,
+    editEntry,
     deleteEntry,
     refresh,
   }

@@ -19,9 +19,10 @@ interface EventLogProps {
   entries: PunchEntry[]
   lastUpdated: Date
   onDelete: (id: number) => Promise<void>
+  onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLog({ entries, lastUpdated, onDelete }: EventLogProps) {
+export function EventLog({ entries, lastUpdated, onDelete, onEdit }: EventLogProps) {
   const [expanded, setExpanded] = useState(false)
 
   const latestPair = entries.slice(0, 2)
@@ -46,21 +47,22 @@ export function EventLog({ entries, lastUpdated, onDelete }: EventLogProps) {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {/* Latest pair — always visible */}
-            {latestPair.map((entry) => (
-              <EventLogItem key={entry.id} entry={entry} onDelete={onDelete} />
+            {/* Latest pair - always visible */}
+            {!expanded && latestPair.map((entry) => (
+              <EventLogItem key={entry.id} entry={entry} onDelete={onDelete} onEdit={onEdit} />
             ))}
 
-            {/* Older entries — collapsible */}
+            {/* Older entries - collapsible */}
             {remaining.length > 0 && (
               <Collapsible open={expanded} onOpenChange={setExpanded}>
                 <CollapsibleContent>
                   <div className="scrollbar-hide mb-1.5 max-h-48 space-y-1.5 overflow-y-auto">
-                    {remaining.map((entry) => (
+                    {entries.map((entry) => (
                       <EventLogItem
                         key={entry.id}
                         entry={entry}
                         onDelete={onDelete}
+                        onEdit={onEdit}
                       />
                     ))}
                   </div>

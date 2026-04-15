@@ -2,24 +2,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PencilEdit01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import type { EntryType } from "@/lib/types"
-
-function getLocalDate(): string {
-  return new Date().toLocaleDateString("en-CA")
-}
 
 function getLocalTime(): string {
   const now = new Date()
@@ -27,6 +17,8 @@ function getLocalTime(): string {
 }
 
 interface ManualEntryProps {
+  /** Date to add the entry to (YYYY-MM-DD). Defaults to today. */
+  date?: string
   onAddEntry: (data: {
     date: string
     time: string
@@ -35,18 +27,24 @@ interface ManualEntryProps {
   }) => Promise<void>
 }
 
-export function ManualEntry({ onAddEntry }: ManualEntryProps) {
+export function ManualEntry({ date, onAddEntry }: ManualEntryProps) {
+  const entryDate = date ?? new Date().toLocaleDateString("en-CA")
+
   const [isOpen, setIsOpen] = useState(false)
-  const [date, setDate] = useState(getLocalDate)
   const [time, setTime] = useState(getLocalTime)
   const [type, setType] = useState<EntryType>("LOGIN")
   const [submitting, setSubmitting] = useState(false)
 
+  // Refresh time to "now" when panel opens
+  function handleOpenChange(open: boolean) {
+    if (open) setTime(getLocalTime())
+    setIsOpen(open)
+  }
+
   async function handleSubmit() {
     setSubmitting(true)
     try {
-      await onAddEntry({ date, time, type })
-      // Reset time to now after submit
+      await onAddEntry({ date: entryDate, time, type })
       setTime(getLocalTime())
     } finally {
       setSubmitting(false)
@@ -54,7 +52,7 @@ export function ManualEntry({ onAddEntry }: ManualEntryProps) {
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger asChild>
         <button className="flex w-full items-center gap-2 rounded-lg border border-border/50 px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground">
           <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
@@ -67,23 +65,11 @@ export function ManualEntry({ onAddEntry }: ManualEntryProps) {
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-3 space-y-3 rounded-lg border border-border/50 bg-card/50 p-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Date
-              </label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Time
-              </label>
+        <div className="mt-2 space-y-3 rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="flex gap-3">
+            {/* Time input */}
+            <div className="flex-1 space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Time</label>
               <Input
                 type="time"
                 step="1"
@@ -92,24 +78,32 @@ export function ManualEntry({ onAddEntry }: ManualEntryProps) {
                 className="h-9 text-sm"
               />
             </div>
+
+            {/* Type toggle */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Type
-              </label>
-              <Select
+              <label className="text-xs font-medium text-muted-foreground">Type</label>
+              <ToggleGroup
+                type="single"
                 value={type}
-                onValueChange={(v) => setType(v as EntryType)}
+                onValueChange={(v) => { if (v) setType(v as EntryType) }}
+                className="h-9 rounded-md border border-border/50 bg-muted/20 p-0.5"
               >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LOGIN">Punch IN</SelectItem>
-                  <SelectItem value="LOGOUT">Punch OUT</SelectItem>
-                </SelectContent>
-              </Select>
+                <ToggleGroupItem
+                  value="LOGIN"
+                  className="h-8 px-4 text-xs font-semibold data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/30 data-[state=on]:bg-emerald-500/10"
+                >
+                  IN
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="LOGOUT"
+                  className="h-8 px-4 text-xs font-semibold data-[state=on]:text-red-400 data-[state=on]:border-red-500/30 data-[state=on]:bg-red-500/10"
+                >
+                  OUT
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
+
           <Button
             className="w-full"
             size="sm"
