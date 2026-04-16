@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import type { PortalData, PortalEntry, HrmsConnectionStatus } from "@/lib/types"
 import { usePortalStatusContext } from "@/contexts/portal-status"
+import type { HrmsConnectionStatus, PortalData } from "@/lib/types"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -75,9 +75,12 @@ export function usePortalData(date?: string) {
   })
   const [portalData, setPortalData] = useState<PortalData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const lastRefreshedRef = useRef<Date | null>(null)
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const hasDataRef = useRef(false)
 
   const fetchStatus = useCallback(async () => {
     if (isElectron) {
@@ -101,6 +104,7 @@ export function usePortalData(date?: string) {
       } else {
         data = getMockPortalData()
       }
+      hasDataRef.current = true
       setPortalData(data)
       setError(data.success ? null : data.message || "Failed to fetch portal data")
     } catch {
@@ -108,18 +112,33 @@ export function usePortalData(date?: string) {
     }
   }, [targetDate])
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const THROTTLE_MS = 60_000 // 1 minute
+
+  const refresh = useCallback(async (opts?: { throttle?: boolean }) => {
+    // Throttle check — skip if last refresh was less than 1 minute ago
+    if (opts?.throttle && lastRefreshedRef.current) {
+      if (Date.now() - lastRefreshedRef.current.getTime() < THROTTLE_MS) return
+    }
+
+    // Use syncing (not loading) when data is already displayed
+    if (hasDataRef.current) {
+      setSyncing(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       const status = await fetchStatus()
       if (status.connected || status.hasCredentials) {
         await fetchHours()
-        // Re-fetch status: fetchHours may have auto-logged in (token was gone after restart)
         await fetchStatus()
-        setLastRefreshed(new Date())
+        const now = new Date()
+        lastRefreshedRef.current = now
+        setLastRefreshed(now)
       }
     } finally {
       setLoading(false)
+      setSyncing(false)
     }
   }, [fetchStatus, fetchHours])
 
@@ -182,6 +201,18 @@ export function usePortalData(date?: string) {
     }
   }, [isToday, hrmsStatus.connected, hrmsStatus.hasCredentials, fetchHours])
 
+  // Sync on window focus — only for today, only when connected, throttled to 1 min
+  useEffect(() => {
+    if (!isToday) return
+    const handleFocus = () => {
+      if (hrmsStatus.connected || hrmsStatus.hasCredentials) {
+        refresh({ throttle: true })
+      }
+    }
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
+  }, [isToday, hrmsStatus.connected, hrmsStatus.hasCredentials, refresh])
+
   // Live timer: only for today
   useEffect(() => {
     if (!isToday || !portalData?.isCurrentlyIn) return
@@ -203,5 +234,5 @@ export function usePortalData(date?: string) {
     return () => clearInterval(interval)
   }, [portalData?.isCurrentlyIn])
 
-  return { hrmsStatus, portalData, loading, error, lastRefreshed, login, logout, refresh }
+  return { hrmsStatus, portalData, loading, syncing, error, lastRefreshed, login, logout, refresh }
 }

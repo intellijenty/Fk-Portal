@@ -26,6 +26,7 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
     hrmsStatus,
     portalData,
     loading,
+    syncing,
     error,
     lastRefreshed,
     login,
@@ -53,14 +54,26 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={refresh}
-                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={() => refresh()}
+                  disabled={syncing || loading}
+                  className="flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default"
                 >
-                  ↻
+                  <span
+                    className={`inline-block text-sm leading-none ${
+                      syncing
+                        ? "animate-spin text-foreground/70 animation-duration-[1.2s]"
+                        : ""
+                    }`}
+                    style={syncing ? { animationTimingFunction: "linear" } : undefined}
+                  >
+                    ↻
+                  </span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {lastRefreshed
+                {syncing
+                  ? "Syncing…"
+                  : lastRefreshed
                   ? `Last updated: ${formatTime(lastRefreshed)}`
                   : "Click to refresh"}
               </TooltipContent>
