@@ -2,10 +2,16 @@ import { PortalStatusCard } from "./portal-status-card"
 import { PortalTotalCard } from "./portal-total-card"
 import { PortalLog } from "./portal-log"
 import { HrmsLogin } from "./hrms-login"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 import { usePortalData } from "@/hooks/use-portal-data"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Globe02Icon } from "@hugeicons/core-free-icons"
+import { Card, CardContent } from "./ui/card"
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-US", {
@@ -16,12 +22,45 @@ function formatTime(date: Date): string {
   })
 }
 
+// Skeleton that mirrors the real portal cards layout
+
+function PortalCardsSkeleton() {
+  return (
+    <>
+      {/* Two cards row — matches grid grid-cols-2 gap-3 */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Status & Total card skeleton */}
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-60 rounded-4xl border border-card bg-muted/50 p-5"
+          ></div>
+        ))}
+      </div>
+
+      {/* Log skeleton */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="px-4">
+            <Skeleton className="h-5 w-full rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// Main component
+
 interface PortalSectionProps {
   date?: string
   variant?: "default" | "wide"
 }
 
-export function PortalSection({ date, variant = "default" }: PortalSectionProps) {
+export function PortalSection({
+  date,
+  variant = "default",
+}: PortalSectionProps) {
   const {
     hrmsStatus,
     portalData,
@@ -34,14 +73,14 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
     refresh,
   } = usePortalData(date)
 
-  // Show controls when connected OR when credentials exist (auto-reconnecting after restart)
   const showControls = hrmsStatus.connected || hrmsStatus.hasCredentials
+  const showSkeleton = loading && !portalData && showControls
 
   return (
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
           Portal
         </h2>
         <div className="flex items-center gap-2">
@@ -60,11 +99,16 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
                 >
                   <span
                     className={`inline-block text-sm leading-none ${
-                      syncing
-                        ? "animate-spin text-foreground/70 animation-duration-[1.2s]"
-                        : ""
+                      syncing ? "animate-spin text-foreground/70" : ""
                     }`}
-                    style={syncing ? { animationTimingFunction: "linear" } : undefined}
+                    style={
+                      syncing
+                        ? {
+                            animationTimingFunction: "linear",
+                            animationDuration: "1.2s",
+                          }
+                        : undefined
+                    }
                   >
                     ↻
                   </span>
@@ -74,8 +118,8 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
                 {syncing
                   ? "Syncing…"
                   : lastRefreshed
-                  ? `Last updated: ${formatTime(lastRefreshed)}`
-                  : "Click to refresh"}
+                    ? `Last updated: ${formatTime(lastRefreshed)}`
+                    : "Click to refresh"}
               </TooltipContent>
             </Tooltip>
           )}
@@ -99,20 +143,16 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
       {/* Not connected — wide layout blur overlay */}
       {!showControls && variant === "wide" && (
         <div className="relative overflow-hidden rounded-xl">
-          {/* Ghost skeleton — blurred background */}
-          <div className="pointer-events-none select-none space-y-3 opacity-40 blur-[2px]">
+          <div className="pointer-events-none space-y-3 opacity-40 blur-[2px] select-none">
             <div className="grid grid-cols-2 gap-3">
-              <div className="h-[72px] rounded-lg bg-muted/60" />
-              <div className="h-[72px] rounded-lg bg-muted/60" />
+              <div className="h-18 rounded-lg bg-muted/60" />
+              <div className="h-18 rounded-lg bg-muted/60" />
             </div>
-            <div className="rounded-lg bg-muted/40 px-3 py-2.5 space-y-2">
+            <div className="space-y-2 rounded-lg bg-muted/40 px-3 py-2.5">
               <div className="h-2.5 w-20 rounded-full bg-muted-foreground/20" />
               <div className="space-y-1.5 pt-1">
                 {[0.85, 0.65, 0.75, 0.55].map((w, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2"
-                  >
+                  <div key={i} className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-muted-foreground/15" />
                     <div
                       className="h-2 rounded-full bg-muted-foreground/15"
@@ -123,8 +163,6 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
               </div>
             </div>
           </div>
-
-          {/* Overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-background/75 backdrop-blur-[3px]">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/40">
               <HugeiconsIcon
@@ -141,26 +179,16 @@ export function PortalSection({ date, variant = "default" }: PortalSectionProps)
                 Sign in to view attendance & punch data
               </p>
             </div>
-            <HrmsLogin
-              onLogin={login}
-              onLogout={logout}
-              connected={false}
-            />
+            <HrmsLogin onLogin={login} onLogout={logout} connected={false} />
           </div>
         </div>
       )}
 
-      {/* Loading */}
-      {loading && !portalData && showControls && (
-        <div className="py-4 text-center">
-          <p className="animate-pulse text-xs text-muted-foreground">
-            Loading portal data...
-          </p>
-        </div>
-      )}
+      {/* Skeleton — initial load only (no data yet) */}
+      {showSkeleton && <PortalCardsSkeleton />}
 
       {/* Error */}
-      {error && !portalData?.success && (
+      {error && !portalData?.success && !showSkeleton && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
           {error}
         </div>
