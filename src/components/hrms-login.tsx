@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/collapsible"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons"
+// import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "./ui/input-group"
 
 interface HrmsLoginProps {
   onLogin: (
@@ -87,10 +88,22 @@ export function HrmsLogin({ onLogin, onLogout, connected }: HrmsLoginProps) {
               {error}
             </div>
           )}
-          <div className="space-y-1.5">
+          <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
               Email
             </label>
+            {/* <InputGroup>
+              <InputGroupInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-9 text-sm"
+                placeholder="Enter your email"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>@roimaint.com</InputGroupText>
+              </InputGroupAddon>
+            </InputGroup> */}
             <Input
               type="email"
               placeholder="user@roimaint.com"
@@ -99,7 +112,7 @@ export function HrmsLogin({ onLogin, onLogout, connected }: HrmsLoginProps) {
               className="h-9 text-sm"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
               Password
             </label>

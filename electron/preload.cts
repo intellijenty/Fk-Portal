@@ -3,8 +3,6 @@ const { contextBridge, ipcRenderer } = require("electron")
 contextBridge.exposeInMainWorld("electronAPI", {
   getEvents: (date: string) => ipcRenderer.invoke("get-events", date),
   getStatus: (date?: string) => ipcRenderer.invoke("get-status", date),
-  getWeekSummaries: (startDate: string, endDate: string) =>
-    ipcRenderer.invoke("get-week-summaries", startDate, endDate),
   punchIn: () => ipcRenderer.invoke("punch-in"),
   punchOut: () => ipcRenderer.invoke("punch-out"),
   addEntry: (entry: {
@@ -29,22 +27,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
 
-  // Day marks
+  // ── Day marks ──
   getDayMarks: () => ipcRenderer.invoke("get-day-marks"),
   setDayMark: (date: string, mark: string) =>
     ipcRenderer.invoke("set-day-mark", date, mark),
   deleteDayMark: (date: string) => ipcRenderer.invoke("delete-day-mark", date),
 
-  // HRMS portal
+  // ── HRMS portal ──
   hrmsLogin: (email: string, password: string, baseUrl?: string) =>
     ipcRenderer.invoke("hrms-login", email, password, baseUrl),
   hrmsLogout: () => ipcRenderer.invoke("hrms-logout"),
   hrmsGetHours: (date?: string) => ipcRenderer.invoke("hrms-get-hours", date),
-  hrmsGetWeekHours: (dates: string[]) =>
-    ipcRenderer.invoke("hrms-get-week-hours", dates),
   hrmsGetStatus: () => ipcRenderer.invoke("hrms-get-status"),
 
-  // Hotkey
+  // ── Portal cache ──
+  portalGetDay: (date: string, force?: boolean) =>
+    ipcRenderer.invoke("portal-get-day", date, force),
+  portalGetRange: (dates: string[], force?: boolean) =>
+    ipcRenderer.invoke("portal-get-range", dates, force),
+  portalCacheStatus: (date: string) =>
+    ipcRenderer.invoke("portal-cache-status", date),
+  portalInvalidate: (dates: string[]) =>
+    ipcRenderer.invoke("portal-cache-invalidate", dates),
+  portalInvalidateAll: () => ipcRenderer.invoke("portal-cache-invalidate-all"),
+  portalPopulate: (dates: string[]) =>
+    ipcRenderer.invoke("portal-cache-populate", dates),
+
+  // ── Hotkey / window ──
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => {
     const listener = (_: unknown, triggerKey: string) => callback(triggerKey)
     ipcRenderer.on("hotkey:push-show", listener)

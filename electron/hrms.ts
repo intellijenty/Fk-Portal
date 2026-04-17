@@ -166,13 +166,13 @@ export async function hrmsGetWorkingHours(
     date || new Date().toISOString().replace(/T.*/, "T00:00:00.000Z")
 
   try {
-    const response = await net.fetch(
-      `${baseUrl}/EmployeeWorkingHours/?empid=${userId}&logdate=${logdate}`,
-      {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    )
+    const url = `${baseUrl}/EmployeeWorkingHours/?empid=${userId}&logdate=${logdate}`
+    const response = await net.fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    console.log(`[portal] GET ${url} - RESPONSE: ${response.status}`)
 
     // Token expired — re-auth once
     if (response.status === 401 && !_retried) {
@@ -249,6 +249,9 @@ export async function hrmsGetWeekHours(
 ): Promise<WeekDayPortalSummary[]> {
   const today = new Date().toLocaleDateString("en-CA")
 
+  console.log(`----------------------------------------------------------------------`)
+  console.log(`[portal] Fetching working hours for week: ${dates.join(", ")}`)
+
   const results = await Promise.all(
     dates.map(async (date) => {
       const apiDate = `${date}T00:00:00.000Z`
@@ -287,6 +290,8 @@ export async function hrmsGetWeekHours(
       }
     })
   )
+
+  console.log(`----------------------------------------------------------------------`)
 
   return results
 }

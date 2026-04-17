@@ -84,6 +84,25 @@ export interface HrmsConnectionStatus {
   hasCredentials: boolean
 }
 
+// ── Portal cache types ──
+
+export interface PortalCacheStatus {
+  cached: boolean
+  permanent: boolean
+  cachedAt: string | null
+}
+
+export interface PortalDayResult {
+  data: PortalData | null
+  fromCache: boolean
+  permanent: boolean
+  error?: string
+}
+
+export interface PortalRangeResult extends PortalDayResult {
+  date: string
+}
+
 export interface ElectronAPI {
   getEvents: (date: string) => Promise<PunchEntry[]>
   getStatus: (date?: string) => Promise<PunchStatus>
@@ -110,7 +129,7 @@ export interface ElectronAPI {
   setDayMark: (date: string, mark: string) => Promise<void>
   deleteDayMark: (date: string) => Promise<void>
 
-  // HRMS portal
+  // HRMS portal status
   hrmsLogin: (
     email: string,
     password: string,
@@ -118,8 +137,15 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; message?: string; userName?: string; userId?: number }>
   hrmsLogout: () => Promise<void>
   hrmsGetHours: (date?: string) => Promise<PortalData>
-  hrmsGetWeekHours: (dates: string[]) => Promise<WeekDaySummary[]>
   hrmsGetStatus: () => Promise<HrmsConnectionStatus>
+
+  // Portal cache
+  portalGetDay: (date: string, force?: boolean) => Promise<PortalDayResult>
+  portalGetRange: (dates: string[], force?: boolean) => Promise<PortalRangeResult[]>
+  portalCacheStatus: (date: string) => Promise<PortalCacheStatus>
+  portalInvalidate: (dates: string[]) => Promise<void>
+  portalInvalidateAll: () => Promise<void>
+  portalPopulate: (dates: string[]) => Promise<{ date: string; success: boolean }[]>
 
   // Hotkey / window
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void

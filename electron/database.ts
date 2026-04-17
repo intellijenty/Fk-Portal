@@ -5,6 +5,10 @@ import { app } from "electron"
 
 let db: Database.Database
 
+export function getDb(): Database.Database {
+  return db
+}
+
 export interface DBEntry {
   id: number
   timestamp: string
@@ -54,6 +58,13 @@ export function initDatabase(): void {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS portal_cache (
+      date TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at TEXT NOT NULL,
+      is_permanent INTEGER NOT NULL DEFAULT 0
     );
   `)
 

@@ -19,10 +19,17 @@ import {
 import {
   hrmsLogin,
   hrmsGetWorkingHours,
-  hrmsGetWeekHours,
   getHrmsConnectionStatus,
   clearCredentials,
 } from "./hrms"
+import {
+  getFromCache,
+  setToCache,
+  isDatePermanent,
+  getCacheStatus,
+  invalidateDates,
+  invalidateAll,
+} from "./portal-cache"
 
 function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
@@ -186,11 +193,86 @@ export function registerIpcHandlers(
     deleteDayMark(date)
   })
 
-  ipcMain.handle("hrms-get-week-hours", async (_event, dates: string[]) => {
-    return hrmsGetWeekHours(dates)
-  })
-
   ipcMain.handle("hrms-get-status", () => {
     return getHrmsConnectionStatus()
+  })
+
+  // ── Portal cache handlers ──
+
+  async function fetchAndCacheDay(
+    date: string,
+    force: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<{ data: any | null; fromCache: boolean; permanent: boolean; error?: string }> {
+    const permanent = isDatePermanent(date)
+
+    // Permanent dates: always serve from cache (immutable biometric data)
+    if (permanent) {
+      const cached = getFromCache(date)
+      if (cached) return { data: cached.data, fromCache: true, permanent: true }
+      // Not cached yet — fall through to fetch
+    }
+
+    // Non-permanent: serve from cache unless forced
+    if (!force) {
+      const cached = getFromCache(date)
+      if (cached) return { data: cached.data, fromCache: true, permanent: false }
+    }
+
+    // Fetch from HRMS API
+    const apiDate = `${date}T00:00:00.000Z`
+    const result = await hrmsGetWorkingHours(apiDate)
+    if (result.success) {
+      setToCache(date, result)
+    }
+    return {
+      data: result,
+      fromCache: false,
+      permanent: false,
+      error: result.success ? undefined : result.message,
+    }
+  }
+
+  ipcMain.handle(
+    "portal-get-day",
+    async (_event, date: string, force?: boolean) => {
+      return fetchAndCacheDay(date, force ?? false)
+    }
+  )
+
+  ipcMain.handle(
+    "portal-get-range",
+    async (_event, dates: string[], force?: boolean) => {
+      const results = await Promise.all(
+        dates.map(async (date) => {
+          const result = await fetchAndCacheDay(date, force ?? false)
+          return { date, ...result }
+        })
+      )
+      return results
+    }
+  )
+
+  ipcMain.handle("portal-cache-status", (_event, date: string) => {
+    return getCacheStatus(date)
+  })
+
+  ipcMain.handle("portal-cache-invalidate", (_event, dates: string[]) => {
+    invalidateDates(dates)
+  })
+
+  ipcMain.handle("portal-cache-invalidate-all", () => {
+    invalidateAll()
+  })
+
+  ipcMain.handle("portal-cache-populate", async (_event, dates: string[]) => {
+    // Fetch and cache all given dates (force-refresh regardless of cache state)
+    const results = await Promise.all(
+      dates.map(async (date) => {
+        const result = await fetchAndCacheDay(date, true)
+        return { date, success: result.data?.success ?? false }
+      })
+    )
+    return results
   })
 }

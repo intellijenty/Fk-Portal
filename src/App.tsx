@@ -10,17 +10,16 @@ import { WeeklyCalendar } from "@/components/weekly-calendar"
 import { WeeklyStats } from "@/components/weekly-stats"
 import { usePunchData } from "@/hooks/use-punch-data"
 import { useWindowSize } from "@/hooks/use-window-size"
-import { useWeekData } from "@/hooks/use-week-data"
 import { useDayMarks } from "@/hooks/use-day-marks"
-import { getLocalDate, getWeekRange } from "@/lib/week-utils"
-import { getYearMonth } from "@/lib/month-utils"
+import { getLocalDate, getWeekRange, getDaysOfWeek } from "@/lib/week-utils"
+import { getYearMonth, getWeekdaysInMonth } from "@/lib/month-utils"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { MonthlyInsights } from "@/components/monthly-insights"
-import { useMonthData } from "@/hooks/use-month-data"
+import { usePortalRange } from "@/hooks/use-portal-range"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Timer02Icon, Globe02Icon, Calendar02Icon } from "@hugeicons/core-free-icons"
 import { NarrowBalanceChips } from "@/components/narrow-insight-bar"
-import { PortalStatusProvider, usePortalStatusContext } from "@/contexts/portal-status"
+import { PortalStoreProvider, usePortalStoreContext } from "@/contexts/portal-store"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
 
@@ -134,8 +133,9 @@ function WideLayout({
   onCycleMark,
 }: WideLayoutProps) {
   const weekRange = getWeekRange(selectedDate)
-  const { summaries } = useWeekData(weekRange.start, weekRange.end)
-  const { portalConnected } = usePortalStatusContext()
+  const weekDays = getDaysOfWeek(weekRange.start)
+  const { summaries } = usePortalRange(weekDays)
+  const { connected: portalConnected } = usePortalStoreContext()
 
   return (
     <div className="flex h-screen bg-background">
@@ -217,9 +217,12 @@ function UltraWideLayout({
 }: WideLayoutProps) {
   const yearMonth = getYearMonth(selectedDate)
   const weekRange = getWeekRange(selectedDate)
-  const { summaries: monthSummaries } = useMonthData(yearMonth)
-  const { summaries: weekSummaries } = useWeekData(weekRange.start, weekRange.end)
-  const { portalConnected } = usePortalStatusContext()
+  const today = getLocalDate()
+  const monthDays = getWeekdaysInMonth(yearMonth, today)
+  const weekDays = getDaysOfWeek(weekRange.start)
+  const { summaries: monthSummaries } = usePortalRange(monthDays)
+  const { summaries: weekSummaries } = usePortalRange(weekDays)
+  const { connected: portalConnected } = usePortalStoreContext()
 
   return (
     <div className="flex h-screen bg-background">
@@ -347,7 +350,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <PortalStatusProvider>
+      <PortalStoreProvider>
         {isUltraWide ? (
           <UltraWideLayout
             selectedDate={selectedDate}
@@ -365,7 +368,7 @@ export default function App() {
         ) : (
           <NarrowLayout />
         )}
-      </PortalStatusProvider>
+      </PortalStoreProvider>
     </TooltipProvider>
   )
 }

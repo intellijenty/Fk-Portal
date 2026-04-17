@@ -6,10 +6,9 @@ import {
 } from "@/components/ui/tooltip"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Calendar04Icon } from "@hugeicons/core-free-icons"
-import { useWeekData } from "@/hooks/use-week-data"
-import { useMonthData } from "@/hooks/use-month-data"
+import { usePortalRange } from "@/hooks/use-portal-range"
 import { useDayMarks } from "@/hooks/use-day-marks"
-import { usePortalStatusContext } from "@/contexts/portal-status"
+import { usePortalStoreContext } from "@/contexts/portal-store"
 import {
   getLocalDate,
   getWeekRange,
@@ -18,20 +17,19 @@ import {
   formatSignedHM,
   formatHM,
 } from "@/lib/week-utils"
-import { getYearMonth, getMonthRange } from "@/lib/month-utils"
+import { getYearMonth, getMonthRange, getWeekdaysInMonth } from "@/lib/month-utils"
 import { cn } from "@/lib/utils"
 
 export function NarrowBalanceChips() {
   const today = getLocalDate()
   const weekRange = getWeekRange(today)
   const yearMonth = getYearMonth(today)
-  const { portalConnected } = usePortalStatusContext()
+  const { connected: portalConnected } = usePortalStoreContext()
 
-  const { summaries: weekSummaries } = useWeekData(
-    weekRange.start,
-    weekRange.end
-  )
-  const { summaries: monthSummaries } = useMonthData(yearMonth)
+  const weekDays = getDaysOfWeek(weekRange.start)
+  const monthDays = getWeekdaysInMonth(yearMonth, today)
+  const { summaries: weekSummaries } = usePortalRange(weekDays)
+  const { summaries: monthSummaries } = usePortalRange(monthDays)
   const { dayMarks } = useDayMarks()
 
   const { weekBalance, monthBalance } = useMemo(() => {

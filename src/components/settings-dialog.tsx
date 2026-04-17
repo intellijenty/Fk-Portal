@@ -15,6 +15,8 @@ import {
   Database02Icon,
   Cancel01Icon,
   UniversalAccessCircleIcon,
+  Delete02Icon,
+  RefreshIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
@@ -27,6 +29,150 @@ const TABS = [
 ] as const
 
 type TabValue = (typeof TABS)[number]["value"]
+
+// ── Data Controls tab ─────────────────────────────────────────────────────────
+
+type ActionState = "idle" | "loading" | "done" | "error"
+
+function SettingGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-0.5 text-xs text-muted-foreground/60">{description}</p>
+        )}
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  )
+}
+
+function ActionRow({
+  icon,
+  label,
+  description,
+  buttonLabel,
+  destructive,
+  state,
+  onAction,
+}: {
+  icon: React.ComponentProps<typeof HugeiconsIcon>["icon"]
+  label: string
+  description: string
+  buttonLabel: string
+  destructive?: boolean
+  state: ActionState
+  onAction: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
+          <HugeiconsIcon icon={icon} size={14} className="text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-xs font-medium">{label}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/60">{description}</p>
+        </div>
+      </div>
+      <div className="ml-4 flex shrink-0 items-center gap-2">
+        {state === "done" && (
+          <span className="text-[11px] text-emerald-400">Done</span>
+        )}
+        {state === "error" && (
+          <span className="text-[11px] text-destructive">Failed</span>
+        )}
+        <Button
+          size="sm"
+          variant={destructive ? "destructive" : "outline"}
+          className="h-7 px-3 text-[11px]"
+          disabled={state === "loading"}
+          onClick={onAction}
+        >
+          {state === "loading" ? "Working…" : buttonLabel}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+const isElectron = typeof window !== "undefined" && !!window.electronAPI
+
+function DataControlsTab() {
+  const [clearCacheState, setClearCacheState] = useState<ActionState>("idle")
+  const [clearNonPermState, setClearNonPermState] = useState<ActionState>("idle")
+
+  async function handleClearAllCache() {
+    setClearCacheState("loading")
+    try {
+      if (isElectron) await window.electronAPI.portalInvalidateAll()
+      setClearCacheState("done")
+      setTimeout(() => setClearCacheState("idle"), 2500)
+    } catch {
+      setClearCacheState("error")
+      setTimeout(() => setClearCacheState("idle"), 2500)
+    }
+  }
+
+  async function handleClearNonPermanent() {
+    setClearNonPermState("loading")
+    try {
+      if (isElectron) {
+        // Non-permanent = last 10 days. Collect today and up to 9 prior days.
+        const dates: string[] = []
+        const d = new Date()
+        for (let i = 0; i < 10; i++) {
+          dates.push(d.toLocaleDateString("en-CA"))
+          d.setDate(d.getDate() - 1)
+        }
+        await window.electronAPI.portalInvalidate(dates)
+      }
+      setClearNonPermState("done")
+      setTimeout(() => setClearNonPermState("idle"), 2500)
+    } catch {
+      setClearNonPermState("error")
+      setTimeout(() => setClearNonPermState("idle"), 2500)
+    }
+  }
+
+  return (
+    <div className="space-y-7">
+      <SettingGroup
+        title="Portal Cache"
+        description="Portal data is cached locally to reduce network requests. Permanent cache stores data older than 10 days and is not automatically cleared."
+      >
+        <ActionRow
+          icon={RefreshIcon}
+          label="Clear recent cache"
+          description="Removes cached portal data for the last 10 days. Next load will re-fetch from portal."
+          buttonLabel="Clear recent"
+          state={clearNonPermState}
+          onAction={handleClearNonPermanent}
+        />
+        <ActionRow
+          icon={Delete02Icon}
+          label="Clear all cache"
+          description="Removes all cached portal data including permanent entries. Use if data looks incorrect."
+          buttonLabel="Clear all"
+          destructive
+          state={clearCacheState}
+          onAction={handleClearAllCache}
+        />
+      </SettingGroup>
+    </div>
+  )
+}
 
 // ── Accessibility tab content ─────────────────────────────────────────────────
 
@@ -237,7 +383,9 @@ export function SettingsDialog() {
                   <Separator className="mt-3" />
                 </div>
 
-                {value === "accessibility" ? (
+                {value === "data-controls" ? (
+                  <DataControlsTab />
+                ) : value === "accessibility" ? (
                   <AccessibilityTab />
                 ) : (
                   <div className="flex flex-1 items-center justify-center">

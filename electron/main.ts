@@ -124,6 +124,12 @@ function createWindow(): void {
     }
   })
 
+  mainWindow.webContents.on("before-input-event", (_, input) => {
+    if (input.key === "F12" && input.type === "keyDown") {
+      mainWindow?.webContents.toggleDevTools()
+    }
+  })
+
   mainWindow.on("ready-to-show", () => {
     mainWindow?.show()
   })

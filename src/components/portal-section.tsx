@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
-import { usePortalData } from "@/hooks/use-portal-data"
+import { usePortalDay } from "@/hooks/use-portal-day"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Globe02Icon } from "@hugeicons/core-free-icons"
 import { Card, CardContent } from "./ui/card"
@@ -71,7 +71,7 @@ export function PortalSection({
     login,
     logout,
     refresh,
-  } = usePortalData(date)
+  } = usePortalDay(date)
 
   const showControls = hrmsStatus.connected || hrmsStatus.hasCredentials
   const showSkeleton = loading && !portalData && showControls
