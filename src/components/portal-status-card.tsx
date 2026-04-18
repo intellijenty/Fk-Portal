@@ -1,4 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { formatOmaLean } from "@/lib/omalean"
+import { cn } from "@/lib/utils"
 
 function formatTime(timestamp: string): string {
   return new Date(timestamp).toLocaleTimeString("en-US", {
@@ -25,6 +27,8 @@ export function PortalStatusCard({
   lastInTime,
   totalMinutes,
 }: PortalStatusCardProps) {
+  const omaLeanValue = formatOmaLean(totalMinutes)
+
   return (
     <Card
       className={`relative overflow-hidden border-0 ${
@@ -33,8 +37,8 @@ export function PortalStatusCard({
           : "bg-muted/50 text-muted-foreground"
       }`}
     >
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider opacity-80">
+      <CardContent className={cn("p-5", totalMinutes >= 360 && "pb-1")}>
+        <div className="flex items-center gap-2 text-xs font-medium tracking-wider uppercase opacity-80">
           <span
             className={`inline-block h-2 w-2 rounded-full ${
               isIn
@@ -53,12 +57,27 @@ export function PortalStatusCard({
           </p>
         )}
         <div className="mt-3 border-t border-white/10 pt-3">
-          <p className="text-xs uppercase tracking-wider opacity-60">
+          <p className="text-xs tracking-wider uppercase opacity-60">
             Portal hours
           </p>
-          <p className="mt-0.5 font-mono text-2xl font-semibold tabular-nums tracking-tight">
+          <p className="mt-0.5 font-mono text-2xl font-semibold tracking-tight tabular-nums">
             {formatHoursMinutes(totalMinutes)}
           </p>
+
+          {/* OmaLean hours row */}
+          <div
+            className={cn(
+              "mt-2 flex items-center gap-2",
+              totalMinutes >= 360 ? "visible" : "hidden"
+            )}
+          >
+            <p className="text-xs tracking-wider uppercase opacity-60">
+              OmaLean
+            </p>
+            <span className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-sm font-semibold tabular-nums">
+              {omaLeanValue}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>
