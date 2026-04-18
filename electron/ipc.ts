@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from "electron"
+import { app, ipcMain, BrowserWindow } from "electron"
 import { registerHotkey } from "./hotkey"
 import {
   getEntriesByDate,
@@ -139,6 +139,10 @@ export function registerIpcHandlers(
     (_event, settings: Record<string, unknown>) => {
       for (const [key, value] of Object.entries(settings)) {
         setSetting(key, String(value))
+      }
+      // Sync login item when autoStart changes
+      if ("autoStart" in settings && app.isPackaged) {
+        app.setLoginItemSettings({ openAtLogin: settings.autoStart === true })
       }
       // Re-register hotkey whenever hotkey settings change
       const HOTKEY_KEYS = ["hotkeyCombo", "hotkeyMode", "hotkeyEnabled"]

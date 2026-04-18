@@ -14,6 +14,12 @@ import { registerHotkey, unregisterHotkey } from "./hotkey"
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
+function syncLoginItem(enabled: boolean): void {
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: enabled })
+  }
+}
+
 function formatTime(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -131,7 +137,13 @@ function createWindow(): void {
   })
 
   mainWindow.on("ready-to-show", () => {
-    mainWindow?.show()
+    // Hide on startup when launched via login item (auto-start)
+    const openedAtLogin = app.isPackaged
+      ? app.getLoginItemSettings().wasOpenedAtLogin
+      : false
+    if (!openedAtLogin) {
+      mainWindow?.show()
+    }
   })
 }
 
@@ -155,6 +167,10 @@ if (!gotLock) {
     // Initialize
     initDatabase()
     handleStartupRecovery()
+
+    // Sync login item setting (auto-start)
+    const startupSettings = getAllSettings()
+    syncLoginItem(startupSettings.autoStart !== "false")
 
     // Log boot LOGIN
     insertEntry("LOGIN", "auto", "via boot")

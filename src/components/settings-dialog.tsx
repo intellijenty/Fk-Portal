@@ -21,11 +21,17 @@ import {
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
 import { useHotkeySettings } from "@/hooks/use-hotkey-settings"
+import { useGeneralSettings } from "@/hooks/use-general-settings"
+import { Switch } from "@/components/ui/switch"
 
 const TABS = [
   { value: "general", label: "General", icon: Settings02Icon },
   { value: "data-controls", label: "Data Controls", icon: Database02Icon },
-  { value: "accessibility", label: "Accessibility", icon: UniversalAccessCircleIcon },
+  {
+    value: "accessibility",
+    label: "Accessibility",
+    icon: UniversalAccessCircleIcon,
+  },
 ] as const
 
 type TabValue = (typeof TABS)[number]["value"]
@@ -46,11 +52,13 @@ function SettingGroup({
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           {title}
         </h3>
         {description && (
-          <p className="mt-0.5 text-xs text-muted-foreground/60">{description}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground/60">
+            {description}
+          </p>
         )}
       </div>
       <div className="space-y-2">{children}</div>
@@ -79,11 +87,17 @@ function ActionRow({
     <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
-          <HugeiconsIcon icon={icon} size={14} className="text-muted-foreground" />
+          <HugeiconsIcon
+            icon={icon}
+            size={14}
+            className="text-muted-foreground"
+          />
         </div>
         <div>
           <p className="text-xs font-medium">{label}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/60">{description}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+            {description}
+          </p>
         </div>
       </div>
       <div className="ml-4 flex shrink-0 items-center gap-2">
@@ -109,9 +123,50 @@ function ActionRow({
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
+// ── General tab ───────────────────────────────────────────────────────────────
+
+function GeneralTab() {
+  const { settings, save, loading } = useGeneralSettings()
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-xs text-muted-foreground/50">Loading…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <SettingGroup
+        title="Startup"
+        description="Control how the app behaves when your system starts"
+      >
+        <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-3">
+          <div>
+            <p className="text-xs font-medium">Launch on startup</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+              Start automatically when you log in. (Recommended)
+            </p>
+          </div>
+          <Switch
+            checked={settings.autoStart}
+            onCheckedChange={(checked) =>
+              save({ ...settings, autoStart: checked })
+            }
+          />
+        </div>
+      </SettingGroup>
+    </div>
+  )
+}
+
+// ── Data Controls tab ─────────────────────────────────────────────────────────
+
 function DataControlsTab() {
   const [clearCacheState, setClearCacheState] = useState<ActionState>("idle")
-  const [clearNonPermState, setClearNonPermState] = useState<ActionState>("idle")
+  const [clearNonPermState, setClearNonPermState] =
+    useState<ActionState>("idle")
 
   async function handleClearAllCache() {
     setClearCacheState("loading")
@@ -192,7 +247,7 @@ function AccessibilityTab() {
       {/* App Hotkey section */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             App Hotkey
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground/60">
@@ -212,7 +267,7 @@ function AccessibilityTab() {
             type="button"
             onClick={() => save({ ...settings, enabled: !settings.enabled })}
             className={cn(
-              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
               settings.enabled ? "bg-primary" : "bg-muted"
             )}
             role="switch"
@@ -327,7 +382,7 @@ export function SettingsDialog() {
           {/* ── Left sidebar ── */}
           <aside className="flex w-48 shrink-0 flex-col border-r border-border/50 bg-muted/20">
             <div className="px-4 pt-5 pb-3">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
                 Settings
               </p>
             </div>
@@ -383,16 +438,12 @@ export function SettingsDialog() {
                   <Separator className="mt-3" />
                 </div>
 
-                {value === "data-controls" ? (
+                {value === "general" ? (
+                  <GeneralTab />
+                ) : value === "data-controls" ? (
                   <DataControlsTab />
-                ) : value === "accessibility" ? (
-                  <AccessibilityTab />
                 ) : (
-                  <div className="flex flex-1 items-center justify-center">
-                    <p className="text-xs text-muted-foreground/40">
-                      No settings here yet
-                    </p>
-                  </div>
+                  <AccessibilityTab />
                 )}
               </TabsContent>
             ))}
