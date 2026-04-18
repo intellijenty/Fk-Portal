@@ -81,6 +81,14 @@ export function initDatabase(): void {
     hotkeyCombo: "Alt+Space",
     hotkeyMode: "press",
     hotkeyEnabled: "true",
+    // Notifications
+    notifyTargetEnabled: "false",
+    notifyTargetMessage: "Target completed for today",
+    notifyTargetSource: "local",
+    notifyEodEnabled: "false",
+    notifyEodMinutes: "5",
+    notifyEodMessage: "EOD Reminder! We are close to reach our target!",
+    notifyEodSource: "local",
   }
 
   const insertSetting = db.prepare(
@@ -106,7 +114,14 @@ export function insertEntry(
     VALUES (?, ?, ?, ?, ?, ?)
   `)
 
-  const result = stmt.run(now, localDate, type, source, triggerLabel, notes || null)
+  const result = stmt.run(
+    now,
+    localDate,
+    type,
+    source,
+    triggerLabel,
+    notes || null
+  )
 
   return getEntryById(result.lastInsertRowid as number)!
 }
@@ -119,14 +134,16 @@ export function getEntryById(id: number): DBEntry | undefined {
 
 export function getEntriesByDate(date: string): DBEntry[] {
   return db
-    .prepare("SELECT * FROM entries WHERE date = ? ORDER BY timestamp DESC, id DESC")
+    .prepare(
+      "SELECT * FROM entries WHERE date = ? ORDER BY timestamp DESC, id DESC"
+    )
     .all(date) as DBEntry[]
 }
 
 export function getLastEntry(): DBEntry | undefined {
-  return db
-    .prepare("SELECT * FROM entries ORDER BY id DESC LIMIT 1")
-    .get() as DBEntry | undefined
+  return db.prepare("SELECT * FROM entries ORDER BY id DESC LIMIT 1").get() as
+    | DBEntry
+    | undefined
 }
 
 export function getLastEntryByDate(date: string): DBEntry | undefined {
@@ -149,11 +166,13 @@ export function updateEntry(
   const newType = updates.type || entry.type
   const newNotes = updates.notes !== undefined ? updates.notes : entry.notes
 
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE entries
     SET timestamp = ?, date = ?, type = ?, notes = ?, modified_at = datetime('now')
     WHERE id = ?
-  `).run(newTimestamp, newDate, newType, newNotes, id)
+  `
+  ).run(newTimestamp, newDate, newType, newNotes, id)
 
   return getEntryById(id)!
 }
@@ -205,9 +224,10 @@ export function getAllDayMarks(): { date: string; mark: string }[] {
 }
 
 export function setDayMark(date: string, mark: string): void {
-  db.prepare(
-    "INSERT OR REPLACE INTO day_marks (date, mark) VALUES (?, ?)"
-  ).run(date, mark)
+  db.prepare("INSERT OR REPLACE INTO day_marks (date, mark) VALUES (?, ?)").run(
+    date,
+    mark
+  )
 }
 
 export function deleteDayMark(date: string): void {

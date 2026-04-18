@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
@@ -18,18 +18,56 @@ import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { MonthlyInsights } from "@/components/monthly-insights"
 import { usePortalRange } from "@/hooks/use-portal-range"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Timer02Icon, Globe02Icon, Calendar02Icon } from "@hugeicons/core-free-icons"
+import {
+  Timer02Icon,
+  Globe02Icon,
+  Calendar02Icon,
+} from "@hugeicons/core-free-icons"
 import { NarrowBalanceChips } from "@/components/narrow-insight-bar"
-import { PortalStoreProvider, usePortalStoreContext } from "@/contexts/portal-store"
+import {
+  PortalStoreProvider,
+  usePortalStoreContext,
+} from "@/contexts/portal-store"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
 import { useAppShortcuts } from "@/hooks/use-app-shortcuts"
+import { useNotificationEngine } from "@/hooks/use-notification-engine"
+import { useNotificationSettings } from "@/hooks/use-notification-settings"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
+
+// ── Notification engine bridge ────────────────────────────────────────────────
+// Mounts inside PortalStoreProvider so usePunchData can subscribe to IPC.
+// Loads settings independently — keeps App root clean.
+
+function AppNotifications() {
+  const { prefs } = useNotificationSettings()
+  const { cache } = usePortalStoreContext()
+  const today = new Date().toLocaleDateString("en-CA")
+  const todayPortal = cache[today]?.data
+  const portalSecondsToday = todayPortal?.success
+    ? todayPortal.totalMinutes * 60
+    : 0
+
+  useNotificationEngine({
+    dailyTargetSeconds: prefs.dailyTargetMinutes * 60,
+    portalSecondsToday,
+    targetEnabled: prefs.targetEnabled,
+    targetSource: prefs.targetSource,
+    targetMessage: prefs.targetMessage,
+    eodEnabled: prefs.eodEnabled,
+    eodSource: prefs.eodSource,
+    eodMinutes: prefs.eodMinutes,
+    eodMessage: prefs.eodMessage,
+  })
+
+  return null
+}
 
 // ── Narrow layout: identical to original ──
 
@@ -90,7 +128,7 @@ function NarrowLayout() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
             Local
           </h2>
           <div className="h-px flex-1 bg-border/50" />
@@ -129,7 +167,10 @@ interface WideLayoutProps {
   onSelectDate: (date: string) => void
   dayMarks: Map<string, import("@/lib/week-utils").DayMark>
   onCycleMark: (date: string) => void
-  onSetMark: (date: string, mark: import("@/lib/week-utils").DayMark | null) => void
+  onSetMark: (
+    date: string,
+    mark: import("@/lib/week-utils").DayMark | null
+  ) => void
 }
 
 function WideLayout({
@@ -284,7 +325,7 @@ function UltraWideLayout({
                 className="text-muted-foreground/60"
               />
             </div>
-            <div className="text-center px-4">
+            <div className="px-4 text-center">
               <p className="text-sm font-medium text-foreground/70">
                 Monthly data
               </p>
@@ -329,7 +370,7 @@ function UltraWideLayout({
                 className="text-muted-foreground/60"
               />
             </div>
-            <div className="text-center px-4">
+            <div className="px-4 text-center">
               <p className="text-sm font-medium text-foreground/70">
                 Weekly stats
               </p>
@@ -375,7 +416,10 @@ interface AppInnerProps {
   onSelectDate: (date: string) => void
   dayMarks: Map<string, import("@/lib/week-utils").DayMark>
   onCycleMark: (date: string) => void
-  onSetMark: (date: string, mark: import("@/lib/week-utils").DayMark | null) => void
+  onSetMark: (
+    date: string,
+    mark: import("@/lib/week-utils").DayMark | null
+  ) => void
 }
 
 function AppInner({
@@ -435,6 +479,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <PortalStoreProvider>
+        <AppNotifications />
         <AppInner
           isUltraWide={isUltraWide}
           isWide={isWide}
@@ -445,6 +490,7 @@ export default function App() {
           onSetMark={setMark}
         />
       </PortalStoreProvider>
+      <Toaster />
     </TooltipProvider>
   )
 }

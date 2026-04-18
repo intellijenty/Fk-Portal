@@ -22,10 +22,15 @@ import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
 import { useHotkeySettings } from "@/hooks/use-hotkey-settings"
 import { useGeneralSettings } from "@/hooks/use-general-settings"
+import { useNotificationSettings } from "@/hooks/use-notification-settings"
 import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
+import { TimeSourceSelector } from "@/components/ui/time-source-selector"
+import { Notification01Icon } from "@hugeicons/core-free-icons"
 
 const TABS = [
   { value: "general", label: "General", icon: Settings02Icon },
+  { value: "notifications", label: "Notifications", icon: Notification01Icon },
   { value: "data-controls", label: "Data Controls", icon: Database02Icon },
   {
     value: "accessibility",
@@ -75,7 +80,7 @@ function ActionRow({
   state,
   onAction,
 }: {
-  icon: React.ComponentProps<typeof HugeiconsIcon>["icon"]
+  icon?: React.ComponentProps<typeof HugeiconsIcon>["icon"]
   label: string
   description: string
   buttonLabel: string
@@ -225,6 +230,174 @@ function DataControlsTab() {
           onAction={handleClearAllCache}
         />
       </SettingGroup>
+    </div>
+  )
+}
+
+// ── Notifications tab ─────────────────────────────────────────────────────────
+
+function NotificationRow({
+  label,
+  description,
+  enabled,
+  onToggle,
+  children,
+}: {
+  label: string
+  description: string
+  enabled: boolean
+  onToggle: (v: boolean) => void
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3.5">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium">{label}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+            {description}
+          </p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={onToggle}
+          size="sm"
+          className="mt-0.5 shrink-0"
+        />
+      </div>
+
+      {/* Options revealed when enabled */}
+      {enabled && children && (
+        <div className="space-y-2.5 border-t border-border/30 pt-3">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NotificationsTab() {
+  const { prefs, save, loading } = useNotificationSettings()
+  const [needsRestart, setNeedsRestart] = useState(false)
+
+  // handleSave is only reachable via user interaction — the form is hidden
+  // while loading is true — so setNeedsRestart(true) is always intentional.
+  function handleSave(updated: Partial<typeof prefs>) {
+    setNeedsRestart(true)
+    save(updated)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-xs text-muted-foreground/50">Loading…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <SettingGroup
+        title="Daily Target"
+        description="Notifications related to reaching your daily hour target"
+      >
+        {/* Target completion */}
+        <NotificationRow
+          label="Target reached"
+          description="System notification when you hit your daily target"
+          enabled={prefs.targetEnabled}
+          onToggle={(v) => handleSave({ targetEnabled: v })}
+        >
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-medium text-muted-foreground">
+              Time source
+            </label>
+            <TimeSourceSelector
+              value={prefs.targetSource}
+              onChange={(v) => handleSave({ targetSource: v })}
+            />
+          </div>
+          <div className="flex flex-col space-y-2">
+            <label className="text-[11px] font-medium text-muted-foreground">
+              Message
+            </label>
+            <Input
+              value={prefs.targetMessage}
+              onChange={(e) => handleSave({ targetMessage: e.target.value })}
+              placeholder="Target completed for today"
+              className="h-8 text-xs"
+            />
+          </div>
+        </NotificationRow>
+
+        {/* EOD reminder */}
+        <NotificationRow
+          label="EOD reminder"
+          description="System notification X minutes before reaching target"
+          enabled={prefs.eodEnabled}
+          onToggle={(v) => handleSave({ eodEnabled: v })}
+        >
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-medium text-muted-foreground">
+              Time source
+            </label>
+            <TimeSourceSelector
+              value={prefs.eodSource}
+              onChange={(v) => handleSave({ eodSource: v })}
+            />
+          </div>
+          <div className="flex items-end gap-3">
+            <div className="flex items-center space-x-1.5">
+              <label className="text-[11px] font-medium text-muted-foreground">
+                Minutes before target
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={prefs.eodMinutes}
+                onChange={(e) =>
+                  handleSave({
+                    eodMinutes: Math.max(1, parseInt(e.target.value) || 1),
+                  })
+                }
+                className="h-8 w-20 text-xs"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col space-y-2">
+            <label className="text-[11px] font-medium text-muted-foreground">
+              Message
+            </label>
+            <Input
+              value={prefs.eodMessage}
+              onChange={(e) => handleSave({ eodMessage: e.target.value })}
+              placeholder="EOD Reminder! We are close to reach our target!"
+              className="h-8 text-xs"
+            />
+          </div>
+        </NotificationRow>
+      </SettingGroup>
+
+      {/* Restart banner */}
+      {needsRestart && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/25 bg-amber-500/8 px-3.5 py-2.5">
+          <p className="text-[11px] text-amber-400/80">
+            Restart required to apply changes
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 border-amber-500/35 px-3 text-[11px] text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+            onClick={() => {
+              if (isElectron) window.electronAPI.restartApp()
+            }}
+          >
+            Restart now
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -440,6 +613,8 @@ export function SettingsDialog() {
 
                 {value === "general" ? (
                   <GeneralTab />
+                ) : value === "notifications" ? (
+                  <NotificationsTab />
                 ) : value === "data-controls" ? (
                   <DataControlsTab />
                 ) : (

@@ -47,6 +47,14 @@ export interface AppSettings {
   hotkeyCombo: string
   hotkeyMode: "press" | "push"
   hotkeyEnabled: boolean
+  // Notifications
+  notifyTargetEnabled: boolean
+  notifyTargetMessage: string
+  notifyTargetSource: "local" | "portal"
+  notifyEodEnabled: boolean
+  notifyEodMinutes: number
+  notifyEodMessage: string
+  notifyEodSource: "local" | "portal"
 }
 
 export interface WeekDaySummary {
@@ -151,6 +159,8 @@ export interface ElectronAPI {
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void
   windowHide: () => Promise<void>
   windowToggleSize: () => Promise<void>
+  showNotification: (title: string, body: string) => Promise<void>
+  restartApp: () => Promise<void>
 }
 
 declare global {

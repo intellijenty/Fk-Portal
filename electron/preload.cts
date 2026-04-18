@@ -61,4 +61,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   windowHide: () => ipcRenderer.invoke("window-hide"),
   windowToggleSize: () => ipcRenderer.invoke("window-toggle-size"),
+  showNotification: (title: string, body: string) =>
+    ipcRenderer.invoke("show-notification", title, body),
+  restartApp: () => ipcRenderer.invoke("restart-app"),
 })

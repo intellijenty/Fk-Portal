@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow } from "electron"
+import { app, ipcMain, BrowserWindow, Notification } from "electron"
 import { registerHotkey } from "./hotkey"
 import {
   getEntriesByDate,
@@ -46,6 +46,14 @@ function buildSettingsResponse(raw: Record<string, string>) {
     hotkeyCombo: raw.hotkeyCombo || "Alt+Space",
     hotkeyMode: (raw.hotkeyMode || "press") as "press" | "push",
     hotkeyEnabled: raw.hotkeyEnabled !== "false",
+    // Notifications
+    notifyTargetEnabled: raw.notifyTargetEnabled === "true",
+    notifyTargetMessage: raw.notifyTargetMessage || "Target completed for today",
+    notifyTargetSource: (raw.notifyTargetSource || "local") as "local" | "portal",
+    notifyEodEnabled: raw.notifyEodEnabled === "true",
+    notifyEodMinutes: parseInt(raw.notifyEodMinutes || "5", 10),
+    notifyEodMessage: raw.notifyEodMessage || "EOD Reminder! We are close to reach our target!",
+    notifyEodSource: (raw.notifyEodSource || "local") as "local" | "portal",
   }
 }
 
@@ -59,6 +67,17 @@ export function registerIpcHandlers(
   onDataChange: () => void,
   getWindow: () => BrowserWindow | null
 ): void {
+  ipcMain.handle("show-notification", (_event, title: string, body: string) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show()
+    }
+  })
+
+  ipcMain.handle("restart-app", () => {
+    app.relaunch()
+    app.exit(0)
+  })
+
   ipcMain.handle("get-events", (_event, date: string) => {
     return getEntriesByDate(date)
   })
