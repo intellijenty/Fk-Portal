@@ -49,6 +49,12 @@ function buildSettingsResponse(raw: Record<string, string>) {
   }
 }
 
+// ── Window size toggle ────────────────────────────────────────────────────────
+// Two fixed states: narrow (480×780) or maximized.
+// No arbitrary intermediate sizes — future builds will enforce this strictly.
+const NARROW_WIDTH = 480
+const NARROW_HEIGHT = 780
+
 export function registerIpcHandlers(
   onDataChange: () => void,
   getWindow: () => BrowserWindow | null
@@ -156,6 +162,21 @@ export function registerIpcHandlers(
   ipcMain.handle("window-hide", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     win?.hide()
+  })
+
+  // Toggle between compact narrow view and maximized (app shortcut "F")
+  ipcMain.handle("window-toggle-size", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || getWindow()
+    if (!win) return
+    if (win.isMaximized()) {
+      // Maximized → narrow fixed size
+      win.unmaximize()
+      win.setSize(NARROW_WIDTH, NARROW_HEIGHT, true)
+      win.center()
+    } else {
+      // Narrow (or any non-maximized) → maximize
+      win.maximize()
+    }
   })
 
   // ── HRMS portal handlers ──

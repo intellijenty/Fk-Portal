@@ -60,4 +60,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("hotkey:push-show", listener)
   },
   windowHide: () => ipcRenderer.invoke("window-hide"),
+  windowToggleSize: () => ipcRenderer.invoke("window-toggle-size"),
 })

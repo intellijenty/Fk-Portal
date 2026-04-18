@@ -98,7 +98,7 @@ function createWindow(): void {
     height: 780,
     minWidth: 400,
     minHeight: 600,
-    resizable: true,
+    resizable: false,
     frame: true,
     show: false,
     backgroundColor: "#0a0a0a",

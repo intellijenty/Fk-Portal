@@ -23,7 +23,10 @@ import { NarrowBalanceChips } from "@/components/narrow-insight-bar"
 import { PortalStoreProvider, usePortalStoreContext } from "@/contexts/portal-store"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
+import { useAppShortcuts } from "@/hooks/use-app-shortcuts"
 import { cn } from "@/lib/utils"
+
+const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
@@ -410,7 +413,14 @@ export default function App() {
   const isWide = width >= WIDE_BREAKPOINT
   const [selectedDate, setSelectedDate] = useState(getLocalDate())
   const { dayMarks, cycleMark } = useDayMarks()
+
   useHotkeyBehavior()
+
+  useAppShortcuts({
+    "toggle-window-size": () => {
+      if (isElectron) window.electronAPI.windowToggleSize()
+    },
+  })
 
   return (
     <TooltipProvider>

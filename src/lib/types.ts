@@ -150,6 +150,7 @@ export interface ElectronAPI {
   // Hotkey / window
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void
   windowHide: () => Promise<void>
+  windowToggleSize: () => Promise<void>
 }
 
 declare global {
