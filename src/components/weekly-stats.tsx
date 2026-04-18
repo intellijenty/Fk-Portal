@@ -12,6 +12,8 @@ import {
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import type { WeekDaySummary } from "@/lib/types"
 import {
   getDaysOfWeek,
@@ -23,47 +25,36 @@ import {
   getLocalDate,
   type DayMark,
 } from "@/lib/week-utils"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Info } from "@hugeicons/core-free-icons"
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
-const MARK_LABELS: Record<DayMark, string> = { mp: "MP", fl: "FL", hl: "HL" }
-const MARK_TITLE_NEXT: Record<string, string> = {
-  "": "Click → Miss Punch",
-  mp: "Click → Full Leave",
-  fl: "Click → Half Leave",
-  hl: "Click → Clear",
-}
+const chartConfig = {
+  hours: { label: "Hours" },
+} satisfies ChartConfig
 
-const BAR_FILLS: Record<string, string> = {
+// Bar fill colours
+const C: Record<string, string> = {
   surplus: "#10b981",
   deficit: "#f59e0b",
   critical: "#ef4444",
-  mp: "rgba(239,68,68,0.25)",
-  fl: "rgba(139,92,246,0.4)",
-  hl: "rgba(56,189,248,0.4)",
-  none: "rgba(255,255,255,0.06)",
-  today: "#6366f1",
+  today: "#818cf8",
+  mp: "rgba(239,68,68,0.28)",
+  fl: "rgba(139,92,246,0.35)",
+  hl: "rgba(56,189,248,0.38)",
+  empty: "rgba(255,255,255,0.04)",
 }
-
-const chartConfig = {
-  hours: { label: "Hours", color: "#10b981" },
-} satisfies ChartConfig
 
 interface WeeklyStatsProps {
   weekSummaries: WeekDaySummary[]
   selectedDate: string
   dayMarks: Map<string, DayMark>
-  onCycleMark: (date: string) => void
+  onCycleMark: (date: string) => void // kept for prop-compat; marks use context menu
 }
 
 export function WeeklyStats({
   weekSummaries,
   selectedDate,
   dayMarks,
-  onCycleMark,
 }: WeeklyStatsProps) {
   const today = getLocalDate()
   const weekRange = getWeekRange(selectedDate)
@@ -71,15 +62,13 @@ export function WeeklyStats({
   const summaryMap = new Map(weekSummaries.map((s) => [s.date, s]))
 
   const wb = computeWeeklyBalance(days, weekSummaries, today, dayMarks)
-  const targetHours = Math.floor(wb.effectiveTarget / 3600)
   const weekPct =
     wb.effectiveTarget > 0
       ? Math.min(100, Math.round((wb.totalWorked / wb.effectiveTarget) * 100))
       : 0
 
-  // Build chart data — weekdays only (Mon-Fri)
-  const weekdays = days.slice(0, 5)
-  const chartData = weekdays.map((date, i) => {
+  // ── Chart data (Mon–Fri) ──────────────────────────────────────────────────
+  const chartData = days.slice(0, 5).map((date, i) => {
     const isToday = date === today
     const isFuture = date > today
     const summary = summaryMap.get(date)
@@ -89,7 +78,7 @@ export function WeeklyStats({
     const isFL = mark === "fl"
     const isHL = mark === "hl"
 
-    const portalSecs = summary?.totalSeconds || 0
+    const portalSecs = summary?.totalSeconds ?? 0
     const displaySecs = isMP
       ? 0
       : isFL
@@ -100,221 +89,286 @@ export function WeeklyStats({
     const hours = displaySecs / 3600
     const diff = displaySecs - 8 * 3600
 
-    const status =
-      isMP || isFL || isHL
-        ? isMP
-          ? "mp"
-          : isFL
-            ? "fl"
-            : "hl"
-        : isToday
-          ? "today"
-          : getDayStatus(displaySecs)
+    const status = isMP
+      ? "mp"
+      : isFL
+        ? "fl"
+        : isHL
+          ? "hl"
+          : isToday
+            ? "today"
+            : getDayStatus(displaySecs)
+
+    const hasBar = !isFuture && (isFL || hours > 0)
+
+    // Display label for the day grid cell
+    const displayHours = isFuture
+      ? "—"
+      : isMP
+        ? "MP"
+        : isFL
+          ? "FL"
+          : hours > 0
+            ? formatHM(displaySecs)
+            : "—"
 
     return {
       label: DAY_LABELS[i],
       date,
-      hours: isFuture ? 0 : hours,
-      displayHours: isFuture
-        ? "—"
-        : isMP
-          ? "MP"
-          : isFL
-            ? "FL"
-            : hours > 0
-              ? formatHM(displaySecs)
-              : "—",
+      hours: hasBar ? hours : 0,
+      displaySecs,
+      displayHours,
       diff,
-      fill: isFuture ? BAR_FILLS.none : BAR_FILLS[status] || BAR_FILLS.none,
+      fill: hasBar ? (C[status] ?? C.empty) : C.empty,
       isToday,
       isFuture,
       isMP,
       isFL,
       isHL,
-      mark,
+      hasBar,
     }
   })
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
-      {/* Weekly total */}
-      <div>
-        <div className="flex items-baseline justify-between">
-          <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            Weekly Hours
-          </span>
-          <span className="font-mono text-sm font-semibold tabular-nums">
-            {formatHM(wb.totalWorked)}{" "}
-            <span className="text-muted-foreground">/ {targetHours}h</span>
-          </span>
-        </div>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-emerald-500 transition-all"
-            style={{ width: `${weekPct}%` }}
-          />
-        </div>
-        {(wb.mpDays > 0 || wb.leaveDays > 0) && (
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            {[
-              wb.mpDays > 0 && `${wb.mpDays} MP`,
-              wb.leaveDays > 0 && `${wb.leaveDays} leave`,
-            ]
-              .filter(Boolean)
-              .join(", ")}{" "}
-            — target adjusted
+    <div className="flex flex-col gap-5">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            This Week
           </p>
-        )}
+          <div className="flex items-end gap-2">
+            <p className="mt-1 font-mono text-3xl leading-none font-bold tracking-tight tabular-nums">
+              {formatHM(wb.totalWorked)}
+            </p>
+            <p className="mt-1.5 text-sm text-muted-foreground/60">
+              of {formatHM(wb.effectiveTarget).replace("00m", "0m")}
+              {(wb.mpDays > 0 || wb.leaveDays > 0) && (
+                <span className="ml-1 opacity-60">(target adjusted)</span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border-2 border-card bg-muted/30 px-3 py-2.5">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+              Daily Average
+            </p>
+            <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
+              {wb.workingDays > 0
+                ? formatHM(Math.round(wb.totalWorked / wb.workingDays))
+                : "—"}
+            </p>
+          </div>
+          <div className="rounded-lg border-2 border-card bg-muted/30 px-3 py-2.5">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+              Weekly Balance
+            </p>
+            <p
+              className={cn(
+                "mt-1 font-mono text-lg font-semibold tabular-nums",
+                wb.balance >= 0 ? "text-emerald-400" : "text-amber-400"
+              )}
+            >
+              {formatSignedHM(wb.balance)}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Bar chart */}
-      <ChartContainer config={chartConfig} className="h-[200px] w-full">
-        <BarChart
-          data={chartData}
-          margin={{ top: 8, right: 4, left: -20, bottom: 0 }}
-        >
-          <CartesianGrid
-            vertical={false}
-            strokeDasharray="3 3"
-            stroke="rgba(255,255,255,0.05)"
-          />
-          <XAxis
-            dataKey="label"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-          />
-          <YAxis
-            domain={[0, 10]}
-            tickLine={false}
-            axisLine={false}
-            tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-            tickFormatter={(v: number) => `${v}h`}
-          />
-          <ReferenceLine
-            y={8}
-            stroke="rgba(255,255,255,0.15)"
-            strokeDasharray="4 4"
-            label={{
-              value: "8h target",
-              position: "insideTopRight",
-              fill: "rgba(255,255,255,0.25)",
-              fontSize: 10,
-            }}
-          />
-          <ChartTooltip
-            cursor={{ fill: "rgba(255,255,255,0.03)" }}
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null
-              const d = payload[0].payload
+      {/* ── Progress bar ───────────────────────────────────────────────────── */}
+      <div className="h-1 w-full overflow-hidden rounded-full bg-muted/60">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            weekPct >= 100 ? "bg-accent-foreground" : "bg-accent-foreground"
+          )}
+          style={{ width: `${weekPct}%` }}
+        />
+      </div>
+
+      {/* ── Chart card ─────────────────────────────────────────────────────── */}
+      <Card className="border-muted/30 bg-muted/20 p-5">
+        <div className="space-y-4">
+          <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            Daily Hours
+          </h3>
+
+          <ChartContainer config={chartConfig} className={cn("h-50 w-full")}>
+            <BarChart
+              accessibilityLayer
+              data={chartData}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              barCategoryGap="28%"
+            >
+              <CartesianGrid
+                vertical={false}
+                horizontal
+                strokeDasharray="0"
+                stroke="rgba(100,116,139,0.08)"
+              />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{
+                  fontSize: 12,
+                  fill: "var(--color-muted-foreground)",
+                  fontWeight: 500,
+                }}
+              />
+              <YAxis
+                domain={[0, 10]}
+                width={32}
+                tickLine={false}
+                axisLine={false}
+                tick={{
+                  fontSize: 11,
+                  fill: "var(--color-muted-foreground)",
+                }}
+                tickFormatter={(v: number) => `${v}h`}
+              />
+              <ReferenceLine
+                y={8}
+                stroke="rgba(100,116,139,0.18)"
+                strokeDasharray="2 4"
+                label={{
+                  value: "Target",
+                  position: "insideTopRight",
+                  fill: "var(--color-muted-foreground)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              />
+              <ChartTooltip
+                cursor={{ fill: "rgba(100,116,139,0.06)" }}
+                isAnimationActive={true}
+                animationDuration={300}
+                animationEasing="ease"
+                useTranslate3d={true}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0].payload as (typeof chartData)[0]
+                  if (d.isFuture) return null
+                  return (
+                    <div className="min-w-30 rounded-lg border border-border/40 bg-background/95 px-3 py-2.5 text-xs shadow-lg backdrop-blur-sm">
+                      <p className="font-semibold text-foreground">{d.label}</p>
+                      {d.isMP ? (
+                        <p className="mt-1 font-medium text-red-400">
+                          Miss Punch
+                        </p>
+                      ) : d.isFL ? (
+                        <p className="mt-1 font-medium text-violet-400">
+                          Full Leave
+                        </p>
+                      ) : d.hasBar ? (
+                        <>
+                          <p className="mt-1 font-mono text-sm font-bold tabular-nums">
+                            {formatHM(d.displaySecs)}
+                          </p>
+                          {!d.isToday && (
+                            <p
+                              className={cn(
+                                "mt-1 font-mono font-medium tabular-nums",
+                                d.diff >= 0
+                                  ? "text-emerald-500"
+                                  : "text-amber-500"
+                              )}
+                            >
+                              {formatSignedHM(d.diff)}
+                            </p>
+                          )}
+                          {d.isHL && (
+                            <p className="mt-0.5 text-sky-400">Half Leave</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-1 text-muted-foreground/50">No data</p>
+                      )}
+                    </div>
+                  )
+                }}
+              />
+              <Bar dataKey="hours" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={d.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+
+          {/* ── Day detail boxes ─────────────────────────────────────────── */}
+          <div className="grid grid-cols-5 gap-2 pr-2 pl-8">
+            {chartData.map((d) => {
+              const showDiff =
+                d.hasBar && !d.isMP && !d.isFL && !d.isToday && d.hours > 0
               return (
-                <div className="rounded-lg border border-border/50 bg-popover px-3 py-2 text-xs shadow-md">
-                  <p className="font-medium">{d.label}</p>
-                  <p className="mt-0.5 font-mono text-muted-foreground tabular-nums">
-                    {d.displayHours}
-                  </p>
-                  {!d.isMP &&
-                    !d.isFL &&
-                    !d.isFuture &&
-                    !d.isToday &&
-                    d.hours > 0 && (
+                <div
+                  key={d.date}
+                  className={cn(
+                    "rounded-md border transition-colors",
+                    d.isToday
+                      ? "border-indigo-500/30 bg-indigo-500/5"
+                      : d.isFuture
+                        ? "border-muted/15 bg-muted/20"
+                        : "border-muted/25 bg-muted/30"
+                  )}
+                >
+                  <div className="px-2 py-2 text-center">
+                    {/* <p
+                      className={cn(
+                        "text-[11px] font-semibold",
+                        d.isToday
+                          ? "text-indigo-400"
+                          : d.isFuture
+                            ? "text-muted-foreground/40"
+                            : "text-muted-foreground"
+                      )}
+                    >
+                      {d.label}
+                    </p> */}
+                    <p
+                      className={cn(
+                        "mt-1 font-mono text-xs font-bold tabular-nums",
+                        d.isMP
+                          ? "text-red-400"
+                          : d.isFL
+                            ? "text-violet-400"
+                            : d.isFuture || !d.hasBar
+                              ? "text-muted-foreground/30"
+                              : "text-foreground"
+                      )}
+                    >
+                      {d.displayHours}
+                    </p>
+                    {showDiff ? (
                       <p
-                        className={`mt-0.5 font-mono tabular-nums ${
-                          d.diff >= 0 ? "text-emerald-400" : "text-red-400"
-                        }`}
+                        className={cn(
+                          "mt-1 font-mono text-[10px] font-semibold tabular-nums",
+                          d.diff >= 0
+                            ? "text-emerald-400"
+                            : d.diff > -3600
+                              ? "text-amber-400"
+                              : "text-red-400"
+                        )}
                       >
-                        {formatSignedHM(d.diff)} vs target
+                        {formatSignedHM(d.diff)}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[10px] text-transparent select-none">
+                        ·
                       </p>
                     )}
+                  </div>
                 </div>
               )
-            }}
-          />
-          <Bar dataKey="hours" radius={[4, 4, 0, 0]} maxBarSize={40}>
-            {chartData.map((entry, idx) => (
-              <Cell key={idx} fill={entry.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ChartContainer>
-
-      {/* Mark toggles — aligned 5 cols matching chart bars */}
-      <div
-        className="grid grid-cols-5 gap-1"
-        style={{ marginLeft: 12, marginRight: 4 }}
-      >
-        {chartData.map((d) => {
-          const dow = new Date(d.date + "T00:00:00").getDay()
-          const isWeekday = dow >= 1 && dow <= 5
-          const canToggle = isWeekday && !d.isToday
-
-          return (
-            <div key={d.date} className="flex flex-col items-center gap-0.5">
-              {canToggle ? (
-                <button
-                  onClick={() => onCycleMark(d.date)}
-                  className={`w-full rounded px-1 py-0.5 text-center text-[9px] font-bold transition-colors ${
-                    d.isMP
-                      ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                      : d.isFL
-                        ? "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30"
-                        : d.isHL
-                          ? "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30"
-                          : "bg-muted/40 text-muted-foreground/30 hover:bg-muted hover:text-muted-foreground"
-                  }`}
-                  title={MARK_TITLE_NEXT[d.mark || ""]}
-                >
-                  {d.mark ? MARK_LABELS[d.mark] : "—"}
-                </button>
-              ) : (
-                <span className="w-full rounded bg-transparent px-1 py-0.5 text-center text-[9px] text-transparent">
-                  —
-                </span>
-              )}
-              {/* Diff below toggle */}
-              <span
-                className={`font-mono text-[9px] tabular-nums ${
-                  d.isFuture || d.isToday || d.isMP || d.isFL || d.hours === 0
-                    ? "text-transparent"
-                    : d.diff >= 0
-                      ? "text-emerald-400"
-                      : d.diff > -7200
-                        ? "text-amber-400"
-                        : "text-red-400"
-                }`}
-              >
-                {!d.isMP && !d.isFL && !d.isToday && d.hours > 0
-                  ? formatSignedHM(d.diff)
-                  : "·"}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Balance */}
-      <div
-        className={`flex items-center justify-center rounded-lg px-3 py-2.5 text-center ${
-          wb.balance >= 0
-            ? "bg-emerald-500/10 text-emerald-400"
-            : "bg-red-500/10 text-red-400"
-        }`}
-      >
-        <p className="text-xs font-medium">
-          Balance: {formatSignedHM(wb.balance)}{" "}
-          {wb.balance >= 0 ? "ahead" : "behind"}
-        </p>
-        <Tooltip>
-          <TooltipTrigger>
-            <HugeiconsIcon
-              name="info"
-              icon={Info}
-              className="mb-1 ml-1 inline size-3"
-            />
-          </TooltipTrigger>
-          <TooltipContent>Excluding today</TooltipContent>
-        </Tooltip>
-      </div>
+            })}
+          </div>
+        </div>
+      </Card>
     </div>
   )
 }

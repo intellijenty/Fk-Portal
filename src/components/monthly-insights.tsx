@@ -7,11 +7,7 @@ import {
   getLocalDate,
   getWeekRange,
 } from "@/lib/week-utils"
-import {
-  getYearMonth,
-  getMonthRange,
-  getWeeksOfMonth,
-} from "@/lib/month-utils"
+import { getYearMonth, getMonthRange, getWeeksOfMonth } from "@/lib/month-utils"
 
 interface MonthlyInsightsProps {
   monthSummaries: WeekDaySummary[]
@@ -107,16 +103,16 @@ export function MonthlyInsights({
     <div className="space-y-4">
       {/* Monthly summary */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-lg border border-card bg-muted/30 px-3 py-2.5">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Monthly Total
           </p>
           <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
             {formatHM(totalWorked)}
           </p>
         </div>
-        <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-lg border border-card bg-muted/30 px-3 py-2.5">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Daily Average
           </p>
           <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
@@ -127,7 +123,7 @@ export function MonthlyInsights({
 
       {/* Per-week balance */}
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
           Weekly Balances
         </p>
         <div className="space-y-1">
@@ -144,9 +140,7 @@ export function MonthlyInsights({
                 key={wb.index}
                 onClick={() => onSelectDate(firstDay)}
                 className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
-                  isCurrentWeek
-                    ? "bg-muted/60"
-                    : "hover:bg-muted/30"
+                  isCurrentWeek ? "bg-muted/60" : "hover:bg-muted/30"
                 }`}
               >
                 <span className="w-7 shrink-0 font-semibold text-muted-foreground">
@@ -157,7 +151,7 @@ export function MonthlyInsights({
                 </span>
                 <span
                   className={`font-mono text-xs font-medium tabular-nums ${
-                    wb.balance >= 0 ? "text-emerald-400" : "text-red-400"
+                    wb.balance >= 0 ? "text-emerald-300" : "text-red-400"
                   }`}
                 >
                   {formatSignedHM(wb.balance)}
