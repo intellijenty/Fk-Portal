@@ -92,6 +92,35 @@ export interface HrmsConnectionStatus {
   hasCredentials: boolean
 }
 
+// ── Leave types ──
+
+export interface LeaveApplication {
+  app_id: number
+  user_id: number
+  leave_type_id: number
+  leave_name: string
+  start_date: string        // YYYY-MM-DD
+  start_type: number        // 1=Full Day, 2=First Half, 3=Second Half
+  end_date: string          // YYYY-MM-DD
+  end_type: number          // 1=Full Day, 2=First Half
+  total_days: number
+  comment: string | null
+  status: number
+  is_approved_by_pm: boolean
+  available_days: number | null
+  created_at: string
+  modified_at: string | null
+  synced_at?: string
+}
+
+export interface LeaveSyncResult {
+  success: boolean
+  synced: number
+  total: number
+  daysMarked: number
+  message?: string
+}
+
 // ── Portal cache types ──
 
 export interface PortalCacheStatus {
@@ -154,6 +183,9 @@ export interface ElectronAPI {
   portalInvalidate: (dates: string[]) => Promise<void>
   portalInvalidateAll: () => Promise<void>
   portalPopulate: (dates: string[]) => Promise<{ date: string; success: boolean }[]>
+
+  // Leave data
+  leaveSync: () => Promise<LeaveSyncResult>
 
   // Hotkey / window
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void

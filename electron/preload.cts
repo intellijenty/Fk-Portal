@@ -53,6 +53,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   portalPopulate: (dates: string[]) =>
     ipcRenderer.invoke("portal-cache-populate", dates),
 
+  // ── Leave data ──
+  leaveSync: () => ipcRenderer.invoke("leave-sync"),
+
   // ── Hotkey / window ──
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => {
     const listener = (_: unknown, triggerKey: string) => callback(triggerKey)

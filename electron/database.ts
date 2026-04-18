@@ -35,6 +35,29 @@ export function initDatabase(): void {
   db.pragma("foreign_keys = ON")
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS leaves (
+      app_id        INTEGER PRIMARY KEY,
+      user_id       INTEGER NOT NULL,
+      leave_type_id INTEGER NOT NULL,
+      leave_name    TEXT    NOT NULL,
+      start_date    TEXT    NOT NULL,
+      start_type    INTEGER NOT NULL,
+      end_date      TEXT    NOT NULL,
+      end_type      INTEGER NOT NULL,
+      total_days    REAL    NOT NULL,
+      comment       TEXT,
+      status        INTEGER NOT NULL,
+      is_approved_by_pm INTEGER NOT NULL DEFAULT 0,
+      available_days REAL,
+      created_at    TEXT    NOT NULL,
+      modified_at   TEXT,
+      synced_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_leaves_start_date ON leaves(start_date);
+    CREATE INDEX IF NOT EXISTS idx_leaves_end_date   ON leaves(end_date);
+    CREATE INDEX IF NOT EXISTS idx_leaves_status     ON leaves(status);
+
     CREATE TABLE IF NOT EXISTS entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp TEXT NOT NULL,

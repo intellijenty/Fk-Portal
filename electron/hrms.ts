@@ -5,6 +5,11 @@ let token: string | null = null
 let userId: number | null = null
 let userName: string | null = null
 
+// Exported accessors — allow other modules (e.g. leave-api) to share auth state
+export function getToken(): string | null { return token }
+export function setToken(t: string | null): void { token = t }
+export function getUserId(): number | null { return userId }
+
 function getBaseUrl(): string {
   return getSetting("hrmsBaseUrl") || "https://roimaint.in:7000/api"
 }
@@ -172,7 +177,7 @@ export async function hrmsGetWorkingHours(
       headers: { Authorization: `Bearer ${token}` },
     })
 
-    console.log(`[portal] GET ${url} - RESPONSE: ${response.status}`)
+    console.log(`GET ${url} - RESPONSE: ${response.status}`)
 
     // Token expired — re-auth once
     if (response.status === 401 && !_retried) {

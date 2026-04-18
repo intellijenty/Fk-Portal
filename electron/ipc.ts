@@ -1,5 +1,6 @@
 import { app, ipcMain, BrowserWindow, Notification } from "electron"
 import { registerHotkey } from "./hotkey"
+import { syncLeaves } from "./leave-sync"
 import {
   getEntriesByDate,
   getLastEntry,
@@ -307,6 +308,14 @@ export function registerIpcHandlers(
 
   ipcMain.handle("portal-cache-invalidate-all", () => {
     invalidateAll()
+  })
+
+  // ── Leave data ──
+
+  ipcMain.handle("leave-sync", async () => {
+    const result = await syncLeaves()
+    if (result.success) onDataChange()
+    return result
   })
 
   ipcMain.handle("portal-cache-populate", async (_event, dates: string[]) => {

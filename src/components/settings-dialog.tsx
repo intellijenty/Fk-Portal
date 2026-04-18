@@ -17,6 +17,7 @@ import {
   UniversalAccessCircleIcon,
   Delete02Icon,
   RefreshIcon,
+  Download01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
@@ -91,13 +92,6 @@ function ActionRow({
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
-          <HugeiconsIcon
-            icon={icon}
-            size={14}
-            className="text-muted-foreground"
-          />
-        </div>
         <div>
           <p className="text-xs font-medium">{label}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground/60">
@@ -114,12 +108,27 @@ function ActionRow({
         )}
         <Button
           size="sm"
-          variant={destructive ? "destructive" : "outline"}
-          className="h-7 px-3 text-[11px]"
+          variant={"outline"}
+          className={`h-7 min-w-18 px-3 text-xs ${destructive && "text-destructive"}`}
           disabled={state === "loading"}
           onClick={onAction}
         >
-          {state === "loading" ? "Working…" : buttonLabel}
+          {state === "loading" ? (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block animate-spin text-[10px] leading-none"
+                style={{
+                  animationTimingFunction: "linear",
+                  animationDuration: "0.9s",
+                }}
+              >
+                ↻
+              </span>
+              Syncing…
+            </span>
+          ) : (
+            buttonLabel
+          )}
         </Button>
       </div>
     </div>
@@ -172,6 +181,7 @@ function DataControlsTab() {
   const [clearCacheState, setClearCacheState] = useState<ActionState>("idle")
   const [clearNonPermState, setClearNonPermState] =
     useState<ActionState>("idle")
+  const [leaveSyncState, setLeaveSyncState] = useState<ActionState>("idle")
 
   async function handleClearAllCache() {
     setClearCacheState("loading")
@@ -206,8 +216,38 @@ function DataControlsTab() {
     }
   }
 
+  async function handleLeaveSync() {
+    setLeaveSyncState("loading")
+    try {
+      if (isElectron) {
+        const result = await window.electronAPI.leaveSync()
+        setLeaveSyncState(result.success ? "done" : "error")
+      } else {
+        setLeaveSyncState("done")
+      }
+      setTimeout(() => setLeaveSyncState("idle"), 2500)
+    } catch {
+      setLeaveSyncState("error")
+      setTimeout(() => setLeaveSyncState("idle"), 2500)
+    }
+  }
+
   return (
     <div className="space-y-7">
+      <SettingGroup
+        title="Leave Data"
+        description="Import leave records from the portal for smart calculations and calendar display."
+      >
+        <ActionRow
+          icon={Download01Icon}
+          label="Sync leave data"
+          description="Fetches leaves from portal and saves them to local machine."
+          buttonLabel="Sync now"
+          state={leaveSyncState}
+          onAction={handleLeaveSync}
+        />
+      </SettingGroup>
+
       <SettingGroup
         title="Portal Cache"
         description="Portal data is cached locally to reduce network requests. Permanent cache stores data older than 10 days and is not automatically cleared."
@@ -215,7 +255,7 @@ function DataControlsTab() {
         <ActionRow
           icon={RefreshIcon}
           label="Clear recent cache"
-          description="Removes cached portal data for the last 10 days. Next load will re-fetch from portal."
+          description="Removes cached portal data for the last 10 days. (Next load will re-fetch from portal)"
           buttonLabel="Clear recent"
           state={clearNonPermState}
           onAction={handleClearNonPermanent}
@@ -223,7 +263,7 @@ function DataControlsTab() {
         <ActionRow
           icon={Delete02Icon}
           label="Clear all cache"
-          description="Removes all cached portal data including permanent entries. Use if data looks incorrect."
+          description="Removes all cached portal data including permanent entries."
           buttonLabel="Clear all"
           destructive
           state={clearCacheState}

@@ -23,19 +23,24 @@ export function useDayMarks() {
   const [marks, setMarks] = useState<Map<string, DayMark>>(new Map())
   const [loaded, setLoaded] = useState(false)
 
-  // Load persisted marks on mount
-  useEffect(() => {
-    async function load() {
-      if (isElectron) {
-        const rows = await window.electronAPI.getDayMarks()
-        setMarks(new Map(rows.map((r) => [r.date, r.mark as DayMark])))
-      } else {
-        setMarks(loadFromStorage())
-      }
-      setLoaded(true)
+  const reload = useCallback(async () => {
+    if (isElectron) {
+      const rows = await window.electronAPI.getDayMarks()
+      setMarks(new Map(rows.map((r) => [r.date, r.mark as DayMark])))
+    } else {
+      setMarks(loadFromStorage())
     }
-    load()
+    setLoaded(true)
   }, [])
+
+  // Load persisted marks on mount
+  useEffect(() => { reload() }, [reload])
+
+  // Re-sync whenever the main process signals a data change (e.g. leave sync)
+  useEffect(() => {
+    if (!isElectron) return
+    return window.electronAPI.onEventUpdate(() => reload())
+  }, [reload])
 
   // Cycle: none → mp → fl → hl → none
   const cycleMark = useCallback((date: string) => {
