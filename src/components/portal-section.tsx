@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePortalDay } from "@/hooks/use-portal-day"
+import { useWeeklyTarget } from "@/hooks/use-weekly-target"
+import { getLocalDate } from "@/lib/week-utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Globe02Icon } from "@hugeicons/core-free-icons"
 import { Card, CardContent } from "./ui/card"
@@ -75,6 +77,12 @@ export function PortalSection({
 
   const showControls = hrmsStatus.connected || hrmsStatus.hasCredentials
   const showSkeleton = loading && !portalData && showControls
+
+  // Adjusted daily target — only meaningful when viewing today
+  const isToday = (date ?? getLocalDate()) === getLocalDate()
+  const { adjustedTargetMinutes, tooltipText: targetTooltip } = useWeeklyTarget(
+    isToday ? (portalData?.totalMinutes ?? 0) : 0
+  )
 
   return (
     <div className="space-y-3">
@@ -206,6 +214,8 @@ export function PortalSection({
             <PortalTotalCard
               totalMinutes={portalData.totalMinutes}
               isIn={portalData.isCurrentlyIn}
+              targetMinutes={isToday ? adjustedTargetMinutes : 480}
+              adjustmentLabel={isToday ? targetTooltip : null}
             />
           </div>
           <PortalLog entries={portalData.entries} />

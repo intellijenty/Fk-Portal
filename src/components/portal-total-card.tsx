@@ -1,4 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { InformationCircleIcon } from "@hugeicons/core-free-icons"
 
 function formatHoursMinutes(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60)
@@ -19,12 +26,14 @@ interface PortalTotalCardProps {
   totalMinutes: number
   isIn: boolean
   targetMinutes?: number
+  adjustmentLabel?: string | null
 }
 
 export function PortalTotalCard({
   totalMinutes,
   isIn,
   targetMinutes = 480,
+  adjustmentLabel = null,
 }: PortalTotalCardProps) {
   const remainingMinutes = Math.max(0, targetMinutes - totalMinutes)
   const percentage = Math.min(
@@ -32,29 +41,53 @@ export function PortalTotalCard({
     Math.round((totalMinutes / targetMinutes) * 1000) / 10
   )
   const completed = remainingMinutes === 0
+  const isAdjusted = adjustmentLabel !== null
 
   return (
     <Card className="border-0 bg-muted/50">
       <CardContent className="p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Portal Completion
+        {/* Label row */}
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            Portal Completion
+          </p>
+          {isAdjusted && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-default text-blue-400/70 hover:text-blue-400">
+                  <HugeiconsIcon icon={InformationCircleIcon} size={11} />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-50 text-xs">
+                {adjustmentLabel}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        {/* Primary number */}
+        <p className="mt-2 font-mono text-3xl font-bold tracking-tight tabular-nums">
+          {isIn
+            ? formatCompletionTime(remainingMinutes)
+            : formatHoursMinutes(totalMinutes)}
         </p>
-        <p className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight">
-          {isIn ? formatCompletionTime(remainingMinutes) : formatHoursMinutes(totalMinutes)}
-        </p>
+
+        {/* Progress bar */}
         <div className="mt-4 space-y-1.5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>0h</span>
             <span>{percentage}%</span>
-            <span>{Math.floor(targetMinutes / 60)}h</span>
+            <span>{formatHoursMinutes(targetMinutes).replace("00m", "")}</span>
           </div>
           <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-blue-500 transition-all"
+              className={`h-full transition-all ${completed ? "bg-emerald-500" : "bg-blue-500"}`}
               style={{ width: `${percentage}%` }}
             />
           </div>
         </div>
+
+        {/* Footer */}
         <div className="mt-3 text-xs text-muted-foreground">
           {completed ? (
             <span className="text-blue-400">Target reached!</span>

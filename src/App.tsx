@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
@@ -11,6 +11,7 @@ import { WeeklyStats } from "@/components/weekly-stats"
 import { usePunchData } from "@/hooks/use-punch-data"
 import { useWindowSize } from "@/hooks/use-window-size"
 import { useDayMarks } from "@/hooks/use-day-marks"
+import { useWeeklyTarget } from "@/hooks/use-weekly-target"
 import { getLocalDate, getWeekRange, getDaysOfWeek } from "@/lib/week-utils"
 import { getYearMonth, getWeekdaysInMonth } from "@/lib/month-utils"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
@@ -22,6 +23,7 @@ import { NarrowBalanceChips } from "@/components/narrow-insight-bar"
 import { PortalStoreProvider, usePortalStoreContext } from "@/contexts/portal-store"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
+import { cn } from "@/lib/utils"
 
 const WIDE_BREAKPOINT = 860
 const ULTRA_WIDE_BREAKPOINT = 1200
@@ -338,6 +340,68 @@ function UltraWideLayout({
   )
 }
 
+// ── Green edge glow when 40h weekly target is complete ──
+
+function WeeklyCompleteGlow({ visible }: { visible: boolean }) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none fixed inset-0 z-50 transition-opacity duration-[2000ms]",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+      style={{
+        boxShadow:
+          "inset 0 0 0 1px rgba(74,222,128,0.3), inset 0 0 120px rgba(74,222,128,0.07)",
+      }}
+    />
+  )
+}
+
+// ── AppInner: inside PortalStoreProvider, computes weekly glow signal ──
+
+interface AppInnerProps {
+  isUltraWide: boolean
+  isWide: boolean
+  selectedDate: string
+  onSelectDate: (date: string) => void
+  dayMarks: Map<string, import("@/lib/week-utils").DayMark>
+  onCycleMark: (date: string) => void
+}
+
+function AppInner({
+  isUltraWide,
+  isWide,
+  selectedDate,
+  onSelectDate,
+  dayMarks,
+  onCycleMark,
+}: AppInnerProps) {
+  const { weeklyComplete } = useWeeklyTarget()
+
+  return (
+    <>
+      <WeeklyCompleteGlow visible={weeklyComplete} />
+      {isUltraWide ? (
+        <UltraWideLayout
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          dayMarks={dayMarks}
+          onCycleMark={onCycleMark}
+        />
+      ) : isWide ? (
+        <WideLayout
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          dayMarks={dayMarks}
+          onCycleMark={onCycleMark}
+        />
+      ) : (
+        <NarrowLayout />
+      )}
+    </>
+  )
+}
+
 // ── Root: owns all shared state, survives layout transitions ──
 
 export default function App() {
@@ -351,23 +415,14 @@ export default function App() {
   return (
     <TooltipProvider>
       <PortalStoreProvider>
-        {isUltraWide ? (
-          <UltraWideLayout
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            dayMarks={dayMarks}
-            onCycleMark={cycleMark}
-          />
-        ) : isWide ? (
-          <WideLayout
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            dayMarks={dayMarks}
-            onCycleMark={cycleMark}
-          />
-        ) : (
-          <NarrowLayout />
-        )}
+        <AppInner
+          isUltraWide={isUltraWide}
+          isWide={isWide}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          dayMarks={dayMarks}
+          onCycleMark={cycleMark}
+        />
       </PortalStoreProvider>
     </TooltipProvider>
   )
