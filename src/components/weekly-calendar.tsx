@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button"
+import { DayContextMenu } from "@/components/day-context-menu"
 import type { WeekDaySummary } from "@/lib/types"
 import {
   getDaysOfWeek,
@@ -25,6 +26,7 @@ interface WeeklyCalendarProps {
   onSelectDate: (date: string) => void
   weekSummaries: WeekDaySummary[]
   dayMarks?: Map<string, DayMark>
+  onSetMark?: (date: string, mark: DayMark | null) => void
 }
 
 export function WeeklyCalendar({
@@ -32,6 +34,7 @@ export function WeeklyCalendar({
   onSelectDate,
   weekSummaries,
   dayMarks,
+  onSetMark,
 }: WeeklyCalendarProps) {
   const weekRange = getWeekRange(selectedDate)
   const days = getDaysOfWeek(weekRange.start)
@@ -85,7 +88,7 @@ export function WeeklyCalendar({
           const status = isMarked ? "none" : summary ? getDayStatus(summary.totalSeconds) : "none"
           const dateNum = new Date(date + "T00:00:00").getDate()
 
-          return (
+          const tile = (
             <button
               key={date}
               onClick={() => onSelectDate(date)}
@@ -158,6 +161,17 @@ export function WeeklyCalendar({
               )}
             </button>
           )
+
+          return onSetMark ? (
+            <DayContextMenu
+              key={date}
+              date={date}
+              mark={mark}
+              onSetMark={onSetMark}
+            >
+              {tile}
+            </DayContextMenu>
+          ) : tile
         })}
       </div>
 

@@ -51,14 +51,10 @@ export function useDayMarks() {
 
       if (newMark) {
         next.set(date, newMark)
-        if (isElectron) {
-          window.electronAPI.setDayMark(date, newMark)
-        }
+        if (isElectron) window.electronAPI.setDayMark(date, newMark)
       } else {
         next.delete(date)
-        if (isElectron) {
-          window.electronAPI.deleteDayMark(date)
-        }
+        if (isElectron) window.electronAPI.deleteDayMark(date)
       }
 
       if (!isElectron) saveToStorage(next)
@@ -66,5 +62,21 @@ export function useDayMarks() {
     })
   }, [])
 
-  return { dayMarks: marks, cycleMark, loaded }
+  // Direct set: pass null to clear the mark
+  const setMark = useCallback((date: string, mark: DayMark | null) => {
+    setMarks((prev) => {
+      const next = new Map(prev)
+      if (mark) {
+        next.set(date, mark)
+        if (isElectron) window.electronAPI.setDayMark(date, mark)
+      } else {
+        next.delete(date)
+        if (isElectron) window.electronAPI.deleteDayMark(date)
+      }
+      if (!isElectron) saveToStorage(next)
+      return next
+    })
+  }, [])
+
+  return { dayMarks: marks, cycleMark, setMark, loaded }
 }

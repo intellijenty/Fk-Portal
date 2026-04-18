@@ -1,6 +1,7 @@
 import type { WeekDaySummary } from "@/lib/types"
 import type { DayMark } from "@/lib/week-utils"
 import { getDayStatus, getLocalDate, getWeekRange } from "@/lib/week-utils"
+import { DayContextMenu } from "@/components/day-context-menu"
 import {
   getYearMonth,
   getMonthRange,
@@ -23,6 +24,7 @@ interface MonthlyCalendarProps {
   onSelectDate: (date: string) => void
   monthSummaries: WeekDaySummary[]
   dayMarks: Map<string, DayMark>
+  onSetMark?: (date: string, mark: DayMark | null) => void
 }
 
 export function MonthlyCalendar({
@@ -30,6 +32,7 @@ export function MonthlyCalendar({
   onSelectDate,
   monthSummaries,
   dayMarks,
+  onSetMark,
 }: MonthlyCalendarProps) {
   const yearMonth = getYearMonth(selectedDate)
   const { start, end } = getMonthRange(yearMonth)
@@ -111,7 +114,7 @@ export function MonthlyCalendar({
                       ? "bg-sky-500/50"
                       : DOT_COLORS[status]
 
-                return (
+                const tile = (
                   <button
                     key={date}
                     onClick={() => inMonth && onSelectDate(date)}
@@ -134,6 +137,17 @@ export function MonthlyCalendar({
                     />
                   </button>
                 )
+
+                return inMonth && onSetMark ? (
+                  <DayContextMenu
+                    key={date}
+                    date={date}
+                    mark={mark}
+                    onSetMark={onSetMark}
+                  >
+                    {tile}
+                  </DayContextMenu>
+                ) : tile
               })}
             </div>
           )

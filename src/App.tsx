@@ -129,6 +129,7 @@ interface WideLayoutProps {
   onSelectDate: (date: string) => void
   dayMarks: Map<string, import("@/lib/week-utils").DayMark>
   onCycleMark: (date: string) => void
+  onSetMark: (date: string, mark: import("@/lib/week-utils").DayMark | null) => void
 }
 
 function WideLayout({
@@ -136,6 +137,7 @@ function WideLayout({
   onSelectDate,
   dayMarks,
   onCycleMark,
+  onSetMark,
 }: WideLayoutProps) {
   const weekRange = getWeekRange(selectedDate)
   const weekDays = getDaysOfWeek(weekRange.start)
@@ -168,6 +170,7 @@ function WideLayout({
             onSelectDate={onSelectDate}
             weekSummaries={summaries}
             dayMarks={dayMarks}
+            onSetMark={onSetMark}
           />
         </div>
 
@@ -219,6 +222,7 @@ function UltraWideLayout({
   onSelectDate,
   dayMarks,
   onCycleMark,
+  onSetMark,
 }: WideLayoutProps) {
   const yearMonth = getYearMonth(selectedDate)
   const weekRange = getWeekRange(selectedDate)
@@ -255,6 +259,7 @@ function UltraWideLayout({
             onSelectDate={onSelectDate}
             monthSummaries={monthSummaries}
             dayMarks={dayMarks}
+            onSetMark={onSetMark}
           />
         </div>
 
@@ -299,6 +304,7 @@ function UltraWideLayout({
             onSelectDate={onSelectDate}
             weekSummaries={weekSummaries}
             dayMarks={dayMarks}
+            onSetMark={onSetMark}
           />
         </div>
 
@@ -369,6 +375,7 @@ interface AppInnerProps {
   onSelectDate: (date: string) => void
   dayMarks: Map<string, import("@/lib/week-utils").DayMark>
   onCycleMark: (date: string) => void
+  onSetMark: (date: string, mark: import("@/lib/week-utils").DayMark | null) => void
 }
 
 function AppInner({
@@ -378,6 +385,7 @@ function AppInner({
   onSelectDate,
   dayMarks,
   onCycleMark,
+  onSetMark,
 }: AppInnerProps) {
   const { weeklyComplete } = useWeeklyTarget()
 
@@ -390,6 +398,7 @@ function AppInner({
           onSelectDate={onSelectDate}
           dayMarks={dayMarks}
           onCycleMark={onCycleMark}
+          onSetMark={onSetMark}
         />
       ) : isWide ? (
         <WideLayout
@@ -397,6 +406,7 @@ function AppInner({
           onSelectDate={onSelectDate}
           dayMarks={dayMarks}
           onCycleMark={onCycleMark}
+          onSetMark={onSetMark}
         />
       ) : (
         <NarrowLayout />
@@ -412,7 +422,7 @@ export default function App() {
   const isUltraWide = width >= ULTRA_WIDE_BREAKPOINT
   const isWide = width >= WIDE_BREAKPOINT
   const [selectedDate, setSelectedDate] = useState(getLocalDate())
-  const { dayMarks, cycleMark } = useDayMarks()
+  const { dayMarks, cycleMark, setMark } = useDayMarks()
 
   useHotkeyBehavior()
 
@@ -432,6 +442,7 @@ export default function App() {
           onSelectDate={setSelectedDate}
           dayMarks={dayMarks}
           onCycleMark={cycleMark}
+          onSetMark={setMark}
         />
       </PortalStoreProvider>
     </TooltipProvider>
