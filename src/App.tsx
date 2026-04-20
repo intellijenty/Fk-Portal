@@ -11,6 +11,8 @@ import { WeeklyStats } from "@/components/weekly-stats"
 import { usePunchData } from "@/hooks/use-punch-data"
 import { useWindowSize } from "@/hooks/use-window-size"
 import { useDayMarks } from "@/hooks/use-day-marks"
+import { useWorkWindows } from "@/hooks/use-work-windows"
+import { useGeneralSettings } from "@/hooks/use-general-settings"
 import { useWeeklyTarget } from "@/hooks/use-weekly-target"
 import { getLocalDate, getWeekRange, getDaysOfWeek } from "@/lib/week-utils"
 import { getYearMonth, getWeekdaysInMonth } from "@/lib/month-utils"
@@ -138,6 +140,7 @@ function NarrowLayout() {
           <StatusCard status={status} />
           <TotalCard
             totalSeconds={status.totalSecondsToday}
+            workingSeconds={status.workWindow ? status.workingSecondsToday : undefined}
             isIn={status.isIn}
           />
         </div>
@@ -152,6 +155,7 @@ function NarrowLayout() {
         <EventLog
           entries={events}
           lastUpdated={lastUpdated}
+          workWindow={status.workWindow}
           onDelete={deleteEntry}
           onEdit={editEntry}
         />
@@ -171,6 +175,10 @@ interface WideLayoutProps {
     date: string,
     mark: import("@/lib/week-utils").DayMark | null
   ) => void
+  workWindows: Map<string, import("@/lib/types").DayWorkWindow>
+  onSetWorkWindow: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onDeleteWorkWindow: (date: string) => void
+  nightShift: import("@/lib/types").NightShiftConfig
 }
 
 function WideLayout({
@@ -179,6 +187,10 @@ function WideLayout({
   dayMarks,
   onCycleMark,
   onSetMark,
+  workWindows,
+  onSetWorkWindow,
+  onDeleteWorkWindow,
+  nightShift,
 }: WideLayoutProps) {
   const weekRange = getWeekRange(selectedDate)
   const weekDays = getDaysOfWeek(weekRange.start)
@@ -212,6 +224,10 @@ function WideLayout({
             weekSummaries={summaries}
             dayMarks={dayMarks}
             onSetMark={onSetMark}
+            workWindows={workWindows}
+            onSetWorkWindow={onSetWorkWindow}
+            onDeleteWorkWindow={onDeleteWorkWindow}
+            nightShift={nightShift}
           />
         </div>
 
@@ -264,6 +280,10 @@ function UltraWideLayout({
   dayMarks,
   onCycleMark,
   onSetMark,
+  workWindows,
+  onSetWorkWindow,
+  onDeleteWorkWindow,
+  nightShift,
 }: WideLayoutProps) {
   const yearMonth = getYearMonth(selectedDate)
   const weekRange = getWeekRange(selectedDate)
@@ -301,6 +321,10 @@ function UltraWideLayout({
             monthSummaries={monthSummaries}
             dayMarks={dayMarks}
             onSetMark={onSetMark}
+            workWindows={workWindows}
+            onSetWorkWindow={onSetWorkWindow}
+            onDeleteWorkWindow={onDeleteWorkWindow}
+            nightShift={nightShift}
           />
         </div>
 
@@ -346,6 +370,10 @@ function UltraWideLayout({
             weekSummaries={weekSummaries}
             dayMarks={dayMarks}
             onSetMark={onSetMark}
+            workWindows={workWindows}
+            onSetWorkWindow={onSetWorkWindow}
+            onDeleteWorkWindow={onDeleteWorkWindow}
+            nightShift={nightShift}
           />
         </div>
 
@@ -420,6 +448,10 @@ interface AppInnerProps {
     date: string,
     mark: import("@/lib/week-utils").DayMark | null
   ) => void
+  workWindows: Map<string, import("@/lib/types").DayWorkWindow>
+  onSetWorkWindow: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onDeleteWorkWindow: (date: string) => void
+  nightShift: import("@/lib/types").NightShiftConfig
 }
 
 function AppInner({
@@ -430,6 +462,10 @@ function AppInner({
   dayMarks,
   onCycleMark,
   onSetMark,
+  workWindows,
+  onSetWorkWindow,
+  onDeleteWorkWindow,
+  nightShift,
 }: AppInnerProps) {
   const { weeklyComplete } = useWeeklyTarget()
 
@@ -443,6 +479,10 @@ function AppInner({
           dayMarks={dayMarks}
           onCycleMark={onCycleMark}
           onSetMark={onSetMark}
+          workWindows={workWindows}
+          onSetWorkWindow={onSetWorkWindow}
+          onDeleteWorkWindow={onDeleteWorkWindow}
+          nightShift={nightShift}
         />
       ) : isWide ? (
         <WideLayout
@@ -451,6 +491,10 @@ function AppInner({
           dayMarks={dayMarks}
           onCycleMark={onCycleMark}
           onSetMark={onSetMark}
+          workWindows={workWindows}
+          onSetWorkWindow={onSetWorkWindow}
+          onDeleteWorkWindow={onDeleteWorkWindow}
+          nightShift={nightShift}
         />
       ) : (
         <NarrowLayout />
@@ -467,6 +511,13 @@ export default function App() {
   const isWide = width >= WIDE_BREAKPOINT
   const [selectedDate, setSelectedDate] = useState(getLocalDate())
   const { dayMarks, cycleMark, setMark } = useDayMarks()
+  const { workWindows, setWorkWindow, deleteWorkWindow } = useWorkWindows()
+  const { settings: generalSettings } = useGeneralSettings()
+  const nightShift = {
+    enabled: generalSettings.nightShiftEnabled,
+    start: generalSettings.nightShiftStart,
+    end: generalSettings.nightShiftEnd,
+  }
 
   useHotkeyBehavior()
 
@@ -488,6 +539,10 @@ export default function App() {
           dayMarks={dayMarks}
           onCycleMark={cycleMark}
           onSetMark={setMark}
+          workWindows={workWindows}
+          onSetWorkWindow={(date, start, end, source) => setWorkWindow(date, start, end, source || "manual")}
+          onDeleteWorkWindow={deleteWorkWindow}
+          nightShift={nightShift}
         />
       </PortalStoreProvider>
       <Toaster />

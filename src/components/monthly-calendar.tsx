@@ -1,4 +1,4 @@
-import type { WeekDaySummary } from "@/lib/types"
+import type { WeekDaySummary, DayWorkWindow, NightShiftConfig } from "@/lib/types"
 import type { DayMark } from "@/lib/week-utils"
 import { getDayStatus, getLocalDate, getWeekRange } from "@/lib/week-utils"
 import { DayContextMenu } from "@/components/day-context-menu"
@@ -25,6 +25,10 @@ interface MonthlyCalendarProps {
   monthSummaries: WeekDaySummary[]
   dayMarks: Map<string, DayMark>
   onSetMark?: (date: string, mark: DayMark | null) => void
+  workWindows?: Map<string, DayWorkWindow>
+  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onDeleteWorkWindow?: (date: string) => void
+  nightShift?: NightShiftConfig
 }
 
 export function MonthlyCalendar({
@@ -33,6 +37,10 @@ export function MonthlyCalendar({
   monthSummaries,
   dayMarks,
   onSetMark,
+  workWindows,
+  onSetWorkWindow,
+  onDeleteWorkWindow,
+  nightShift,
 }: MonthlyCalendarProps) {
   const yearMonth = getYearMonth(selectedDate)
   const { start, end } = getMonthRange(yearMonth)
@@ -144,6 +152,10 @@ export function MonthlyCalendar({
                     date={date}
                     mark={mark}
                     onSetMark={onSetMark}
+                    workWindow={workWindows?.get(date)}
+                    onSetWorkWindow={onSetWorkWindow}
+                    onDeleteWorkWindow={onDeleteWorkWindow}
+                    nightShift={nightShift}
                   >
                     {tile}
                   </DayContextMenu>

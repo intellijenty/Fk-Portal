@@ -63,7 +63,11 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
         {/* Cards */}
         <div className="grid shrink-0 grid-cols-2 gap-3">
           <StatusCard status={status} />
-          <TotalCard totalSeconds={status.totalSecondsToday} isIn={status.isIn} />
+          <TotalCard
+            totalSeconds={status.totalSecondsToday}
+            workingSeconds={status.workWindow ? status.workingSecondsToday : undefined}
+            isIn={status.isIn}
+          />
         </div>
 
         {/* Manual entry — available for any day */}
@@ -75,6 +79,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
         <EventLog
           entries={events}
           lastUpdated={lastUpdated}
+          workWindow={status.workWindow}
           onDelete={deleteEntry}
           onEdit={editEntry}
         />

@@ -5,7 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import type { PunchEntry } from "@/lib/types"
+import type { PunchEntry, WorkWindow } from "@/lib/types"
 
 function formatUpdateTime(date: Date): string {
   return date.toLocaleTimeString("en-US", {
@@ -18,11 +18,12 @@ function formatUpdateTime(date: Date): string {
 interface EventLogProps {
   entries: PunchEntry[]
   lastUpdated: Date
+  workWindow?: WorkWindow | null
   onDelete: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLog({ entries, lastUpdated, onDelete, onEdit }: EventLogProps) {
+export function EventLog({ entries, lastUpdated, workWindow, onDelete, onEdit }: EventLogProps) {
   const [expanded, setExpanded] = useState(false)
 
   const latestPair = entries.slice(0, 2)
@@ -49,7 +50,7 @@ export function EventLog({ entries, lastUpdated, onDelete, onEdit }: EventLogPro
           <div className="space-y-1.5">
             {/* Latest pair - always visible */}
             {!expanded && latestPair.map((entry) => (
-              <EventLogItem key={entry.id} entry={entry} onDelete={onDelete} onEdit={onEdit} />
+              <EventLogItem key={entry.id} entry={entry} workWindow={workWindow} onDelete={onDelete} onEdit={onEdit} />
             ))}
 
             {/* Older entries - collapsible */}
@@ -61,6 +62,7 @@ export function EventLog({ entries, lastUpdated, onDelete, onEdit }: EventLogPro
                       <EventLogItem
                         key={entry.id}
                         entry={entry}
+                        workWindow={workWindow}
                         onDelete={onDelete}
                         onEdit={onEdit}
                       />

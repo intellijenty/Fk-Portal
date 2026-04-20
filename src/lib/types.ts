@@ -23,11 +23,18 @@ export interface PunchEntry {
   modified_at: string | null
 }
 
+export interface WorkWindow {
+  start: string // "HH:MM"
+  end: string   // "HH:MM"
+}
+
 export interface PunchStatus {
   isIn: boolean
   lastEntry: PunchEntry | null
   totalSecondsToday: number
+  workingSecondsToday: number
   eventCount: number
+  workWindow: WorkWindow | null
 }
 
 export interface DailySummary {
@@ -55,6 +62,13 @@ export interface AppSettings {
   notifyEodMinutes: number
   notifyEodMessage: string
   notifyEodSource: "local" | "portal"
+  // Work boundary
+  workBoundaryStart: string // "HH:MM" or ""
+  workBoundaryEnd: string   // "HH:MM" or ""
+  // Night shift
+  nightShiftEnabled: boolean
+  nightShiftStart: string // "HH:MM"
+  nightShiftEnd: string   // "HH:MM"
 }
 
 export interface WeekDaySummary {
@@ -121,6 +135,23 @@ export interface LeaveSyncResult {
   message?: string
 }
 
+// ── Work window types ──
+
+export type WorkWindowSource = "default" | "nightshift" | "manual"
+
+export interface DayWorkWindow {
+  date: string
+  start_time: string
+  end_time: string
+  source: WorkWindowSource
+}
+
+export interface NightShiftConfig {
+  enabled: boolean
+  start: string // "HH:MM"
+  end: string   // "HH:MM"
+}
+
 // ── Portal cache types ──
 
 export interface PortalCacheStatus {
@@ -165,6 +196,17 @@ export interface ElectronAPI {
   getDayMarks: () => Promise<{ date: string; mark: string }[]>
   setDayMark: (date: string, mark: string) => Promise<void>
   deleteDayMark: (date: string) => Promise<void>
+
+  // Work windows
+  getWorkWindow: (date: string) => Promise<DayWorkWindow | null>
+  setWorkWindow: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source: WorkWindowSource
+  ) => Promise<void>
+  deleteWorkWindow: (date: string) => Promise<void>
+  getAllWorkWindows: () => Promise<DayWorkWindow[]>
 
   // HRMS portal status
   hrmsLogin: (

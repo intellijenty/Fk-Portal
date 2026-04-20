@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { DayContextMenu } from "@/components/day-context-menu"
-import type { WeekDaySummary } from "@/lib/types"
+import type { WeekDaySummary, DayWorkWindow, NightShiftConfig } from "@/lib/types"
 import {
   getDaysOfWeek,
   shiftWeek,
@@ -27,6 +27,10 @@ interface WeeklyCalendarProps {
   weekSummaries: WeekDaySummary[]
   dayMarks?: Map<string, DayMark>
   onSetMark?: (date: string, mark: DayMark | null) => void
+  workWindows?: Map<string, DayWorkWindow>
+  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onDeleteWorkWindow?: (date: string) => void
+  nightShift?: NightShiftConfig
 }
 
 export function WeeklyCalendar({
@@ -35,6 +39,10 @@ export function WeeklyCalendar({
   weekSummaries,
   dayMarks,
   onSetMark,
+  workWindows,
+  onSetWorkWindow,
+  onDeleteWorkWindow,
+  nightShift,
 }: WeeklyCalendarProps) {
   const weekRange = getWeekRange(selectedDate)
   const days = getDaysOfWeek(weekRange.start)
@@ -168,6 +176,10 @@ export function WeeklyCalendar({
               date={date}
               mark={mark}
               onSetMark={onSetMark}
+              workWindow={workWindows?.get(date)}
+              onSetWorkWindow={onSetWorkWindow}
+              onDeleteWorkWindow={onDeleteWorkWindow}
+              nightShift={nightShift}
             >
               {tile}
             </DayContextMenu>

@@ -53,6 +53,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   portalPopulate: (dates: string[]) =>
     ipcRenderer.invoke("portal-cache-populate", dates),
 
+  // ── Work windows ──
+  getWorkWindow: (date: string) =>
+    ipcRenderer.invoke("get-work-window", date),
+  setWorkWindow: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source: "default" | "nightshift" | "manual"
+  ) => ipcRenderer.invoke("set-work-window", date, startTime, endTime, source),
+  deleteWorkWindow: (date: string) =>
+    ipcRenderer.invoke("delete-work-window", date),
+  getAllWorkWindows: () => ipcRenderer.invoke("get-all-work-windows"),
+
   // ── Leave data ──
   leaveSync: () => ipcRenderer.invoke("leave-sync"),
 

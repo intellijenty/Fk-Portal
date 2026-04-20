@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import type { PunchEntry, PunchStatus, EntryType } from "@/lib/types"
+import type { PunchEntry, PunchStatus, EntryType, WorkWindow } from "@/lib/types"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
+
+function isTimeInWorkWindow(now: Date, window: WorkWindow | null): boolean {
+  if (!window) return true // no window = count everything
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  if (window.start <= window.end) {
+    // Normal: e.g. 09:00–21:30
+    return hhmm >= window.start && hhmm < window.end
+  }
+  // Wrapped: e.g. 22:00–06:00 → valid if >= start OR < end
+  return hhmm >= window.start || hhmm < window.end
+}
 
 function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
@@ -65,7 +76,9 @@ function getMockStatus(): PunchStatus {
     isIn,
     lastEntry: last,
     totalSecondsToday: Math.max(0, Math.floor(totalSeconds)),
+    workingSecondsToday: Math.max(0, Math.floor(totalSeconds)),
     eventCount: todayEntries.length,
+    workWindow: null,
   }
 }
 
@@ -169,7 +182,12 @@ export function usePunchData(date?: string) {
     timerRef.current = setInterval(() => {
       setStatus((prev) => {
         if (!prev || !prev.isIn) return prev
-        return { ...prev, totalSecondsToday: prev.totalSecondsToday + 1 }
+        const inWindow = isTimeInWorkWindow(new Date(), prev.workWindow)
+        return {
+          ...prev,
+          totalSecondsToday: prev.totalSecondsToday + 1,
+          workingSecondsToday: prev.workingSecondsToday + (inWindow ? 1 : 0),
+        }
       })
     }, 1000)
     return () => {

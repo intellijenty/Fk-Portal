@@ -17,20 +17,23 @@ function formatCompletionTime(remainingSeconds: number): string {
 
 interface TotalCardProps {
   totalSeconds: number
+  workingSeconds?: number
   isIn: boolean
   targetMinutes?: number
 }
 
 export function TotalCard({
   totalSeconds,
+  workingSeconds,
   isIn,
   targetMinutes = 480,
 }: TotalCardProps) {
+  const displaySeconds = workingSeconds ?? totalSeconds
   const targetSeconds = targetMinutes * 60
-  const remainingSeconds = Math.max(0, targetSeconds - totalSeconds)
+  const remainingSeconds = Math.max(0, targetSeconds - displaySeconds)
   const percentage = Math.min(
     100,
-    Math.round((totalSeconds / targetSeconds) * 1000) / 10
+    Math.round((displaySeconds / targetSeconds) * 1000) / 10
   )
   const completed = remainingSeconds === 0
 

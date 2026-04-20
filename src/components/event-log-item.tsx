@@ -26,7 +26,7 @@ import {
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
-import type { PunchEntry } from "@/lib/types"
+import type { PunchEntry, WorkWindow } from "@/lib/types"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -81,13 +81,25 @@ function getSourceTooltip(source: string, trigger: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+function isEntryInWorkWindow(entry: PunchEntry, workWindow?: WorkWindow | null): boolean {
+  if (!workWindow) return true
+  const d = new Date(entry.timestamp)
+  const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  if (workWindow.start <= workWindow.end) {
+    return hhmm >= workWindow.start && hhmm < workWindow.end
+  }
+  // Wrapped: e.g. 22:00–06:00 → valid if >= start OR < end
+  return hhmm >= workWindow.start || hhmm < workWindow.end
+}
+
 interface EventLogItemProps {
   entry: PunchEntry
+  workWindow?: WorkWindow | null
   onDelete: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLogItem({ entry, onDelete, onEdit }: EventLogItemProps) {
+export function EventLogItem({ entry, workWindow, onDelete, onEdit }: EventLogItemProps) {
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTime, setEditTime] = useState("")
@@ -97,6 +109,7 @@ export function EventLogItem({ entry, onDelete, onEdit }: EventLogItemProps) {
   const isIn = entry.type === "LOGIN"
   const isEdited = !!entry.modified_at
   const SourceIcon = getSourceIcon(entry.source)
+  const outsideWindow = !isEntryInWorkWindow(entry, workWindow)
 
   function startEdit() {
     setEditTime(timestampToTimeInput(entry.timestamp))
@@ -137,7 +150,10 @@ export function EventLogItem({ entry, onDelete, onEdit }: EventLogItemProps) {
   }
 
   return (
-    <div className="group flex items-center gap-3 rounded-lg border border-border/40 bg-card/30 px-3 py-2.5 transition-colors hover:bg-card/60">
+    <div className={cn(
+      "group flex items-center gap-3 rounded-lg border border-border/40 bg-card/30 px-3 py-2.5 transition-colors hover:bg-card/60",
+      outsideWindow && "opacity-35"
+    )}>
       {/* Source icon */}
       <Tooltip>
         <TooltipTrigger asChild>

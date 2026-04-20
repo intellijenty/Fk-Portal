@@ -9,6 +9,8 @@ import {
   updateEntry,
   deleteEntry,
   calculateTotalSecondsForDate,
+  calculateWorkingSecondsForDate,
+  resolveWorkWindow,
   getEventCountForDate,
   getWeekSummaries,
   getAllDayMarks,
@@ -16,6 +18,10 @@ import {
   deleteDayMark,
   getAllSettings,
   setSetting,
+  getWorkWindow,
+  setWorkWindow,
+  deleteWorkWindow,
+  getAllWorkWindows,
 } from "./database"
 import {
   hrmsLogin,
@@ -55,6 +61,13 @@ function buildSettingsResponse(raw: Record<string, string>) {
     notifyEodMinutes: parseInt(raw.notifyEodMinutes || "5", 10),
     notifyEodMessage: raw.notifyEodMessage || "EOD Reminder! We are close to reach our target!",
     notifyEodSource: (raw.notifyEodSource || "local") as "local" | "portal",
+    // Work boundary
+    workBoundaryStart: raw.workBoundaryStart || "",
+    workBoundaryEnd: raw.workBoundaryEnd || "",
+    // Night shift
+    nightShiftEnabled: raw.nightShiftEnabled === "true",
+    nightShiftStart: raw.nightShiftStart || "22:00",
+    nightShiftEnd: raw.nightShiftEnd || "06:00",
   }
 }
 
@@ -89,13 +102,17 @@ export function registerIpcHandlers(
     const lastEntry = isToday ? getLastEntry() : getLastEntryByDate(targetDate)
     const isIn = isToday ? lastEntry?.type === "LOGIN" : false
     const totalSecondsToday = calculateTotalSecondsForDate(targetDate)
+    const workingSecondsToday = calculateWorkingSecondsForDate(targetDate)
     const eventCount = getEventCountForDate(targetDate)
+    const workWindow = resolveWorkWindow(targetDate)
 
     return {
       isIn,
       lastEntry: lastEntry || null,
       totalSecondsToday,
+      workingSecondsToday,
       eventCount,
+      workWindow,
     }
   })
 
@@ -178,6 +195,7 @@ export function registerIpcHandlers(
           )
         }
       }
+      onDataChange()
       return buildSettingsResponse(getAllSettings())
     }
   )
@@ -240,6 +258,35 @@ export function registerIpcHandlers(
 
   ipcMain.handle("hrms-get-status", () => {
     return getHrmsConnectionStatus()
+  })
+
+  // ── Work window handlers ──
+
+  ipcMain.handle("get-work-window", (_event, date: string) => {
+    return getWorkWindow(date) || null
+  })
+
+  ipcMain.handle(
+    "set-work-window",
+    (
+      _event,
+      date: string,
+      startTime: string,
+      endTime: string,
+      source: "default" | "nightshift" | "manual"
+    ) => {
+      setWorkWindow(date, startTime, endTime, source)
+      onDataChange()
+    }
+  )
+
+  ipcMain.handle("delete-work-window", (_event, date: string) => {
+    deleteWorkWindow(date)
+    onDataChange()
+  })
+
+  ipcMain.handle("get-all-work-windows", () => {
+    return getAllWorkWindows()
   })
 
   // ── Portal cache handlers ──

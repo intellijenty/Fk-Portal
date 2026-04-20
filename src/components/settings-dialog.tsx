@@ -15,9 +15,6 @@ import {
   Database02Icon,
   Cancel01Icon,
   UniversalAccessCircleIcon,
-  Delete02Icon,
-  RefreshIcon,
-  Download01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
@@ -73,7 +70,6 @@ function SettingGroup({
 }
 
 function ActionRow({
-  icon,
   label,
   description,
   buttonLabel,
@@ -81,7 +77,6 @@ function ActionRow({
   state,
   onAction,
 }: {
-  icon?: React.ComponentProps<typeof HugeiconsIcon>["icon"]
   label: string
   description: string
   buttonLabel: string
@@ -150,6 +145,8 @@ function GeneralTab() {
     )
   }
 
+  const hasBoundary = !!settings.workBoundaryStart && !!settings.workBoundaryEnd
+
   return (
     <div className="space-y-6">
       <SettingGroup
@@ -171,6 +168,144 @@ function GeneralTab() {
           />
         </div>
       </SettingGroup>
+
+      <SettingGroup
+        title="Work Boundary"
+        description="Only count local sessions within this time range as working hours. Sessions outside are tracked but excluded from totals."
+      >
+        <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3.5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium">Enable work boundary</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                Set your earliest possible start and latest possible end
+              </p>
+            </div>
+            <Switch
+              checked={hasBoundary}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  save({
+                    ...settings,
+                    workBoundaryStart: "09:00",
+                    workBoundaryEnd: "21:30",
+                  })
+                } else {
+                  save({
+                    ...settings,
+                    workBoundaryStart: "",
+                    workBoundaryEnd: "",
+                  })
+                }
+              }}
+              size="sm"
+              className="mt-0.5 shrink-0"
+            />
+          </div>
+
+          {hasBoundary && (
+            <div className="space-y-2.5 border-t border-border/30 pt-3">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-1 flex-col gap-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">
+                    Earliest start
+                  </label>
+                  <Input
+                    type="time"
+                    value={settings.workBoundaryStart}
+                    onChange={(e) =>
+                      save({ ...settings, workBoundaryStart: e.target.value })
+                    }
+                    className="h-8 font-mono text-xs"
+                  />
+                </div>
+                <span className="mt-5 text-xs text-muted-foreground/40">
+                  to
+                </span>
+                <div className="flex flex-1 flex-col gap-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">
+                    Latest end
+                  </label>
+                  <Input
+                    type="time"
+                    value={settings.workBoundaryEnd}
+                    onChange={(e) =>
+                      save({ ...settings, workBoundaryEnd: e.target.value })
+                    }
+                    className="h-8 font-mono text-xs"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground/50">
+                Sessions outside this range won&apos;t count toward your working
+                hours. Changing this only affects future days.
+              </p>
+            </div>
+          )}
+        </div>
+      </SettingGroup>
+
+      {hasBoundary && (
+        <SettingGroup
+          title="Night Shift"
+          description="Define a separate work window for night shift days. Mark days as night shift from the calendar context menu."
+        >
+          <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3.5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium">Enable night shift</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                  Adds a night shift option to the day context menu
+                </p>
+              </div>
+              <Switch
+                checked={settings.nightShiftEnabled}
+                onCheckedChange={(checked) =>
+                  save({ ...settings, nightShiftEnabled: checked })
+                }
+                size="sm"
+                className="mt-0.5 shrink-0"
+              />
+            </div>
+
+            {settings.nightShiftEnabled && (
+              <div className="space-y-2.5 border-t border-border/30 pt-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Shift start
+                    </label>
+                    <Input
+                      type="time"
+                      value={settings.nightShiftStart}
+                      onChange={(e) =>
+                        save({ ...settings, nightShiftStart: e.target.value })
+                      }
+                      className="h-8 font-mono text-xs"
+                    />
+                  </div>
+                  <span className="mt-5 text-xs text-muted-foreground/40">
+                    to
+                  </span>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Shift end
+                    </label>
+                    <Input
+                      type="time"
+                      value={settings.nightShiftEnd}
+                      onChange={(e) =>
+                        save({ ...settings, nightShiftEnd: e.target.value })
+                      }
+                      className="h-8 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </SettingGroup>
+      )}
     </div>
   )
 }
@@ -239,7 +374,6 @@ function DataControlsTab() {
         description="Import leave records from the portal for smart calculations and calendar display."
       >
         <ActionRow
-          icon={Download01Icon}
           label="Sync leave data"
           description="Fetches leaves from portal and saves them to local machine."
           buttonLabel="Sync now"
@@ -253,7 +387,6 @@ function DataControlsTab() {
         description="Portal data is cached locally to reduce network requests. Permanent cache stores data older than 10 days and is not automatically cleared."
       >
         <ActionRow
-          icon={RefreshIcon}
           label="Clear recent cache"
           description="Removes cached portal data for the last 10 days. (Next load will re-fetch from portal)"
           buttonLabel="Clear recent"
@@ -261,7 +394,6 @@ function DataControlsTab() {
           onAction={handleClearNonPermanent}
         />
         <ActionRow
-          icon={Delete02Icon}
           label="Clear all cache"
           description="Removes all cached portal data including permanent entries."
           buttonLabel="Clear all"

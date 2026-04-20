@@ -23,6 +23,10 @@ interface StatusCardProps {
 
 export function StatusCard({ status }: StatusCardProps) {
   const isIn = status.isIn
+  const hasWorkWindow = !!status.workWindow
+  const displaySeconds = hasWorkWindow
+    ? status.workingSecondsToday
+    : status.totalSecondsToday
 
   return (
     <Card
@@ -51,11 +55,16 @@ export function StatusCard({ status }: StatusCardProps) {
         )}
         <div className="mt-3 border-t border-white/10 pt-3">
           <p className="text-xs uppercase tracking-wider opacity-60">
-            Time in today
+            {hasWorkWindow ? "Working time" : "Time in today"}
           </p>
           <p className="mt-0.5 font-mono text-2xl font-semibold tabular-nums tracking-tight">
-            {formatTimer(status.totalSecondsToday)}
+            {formatTimer(displaySeconds)}
           </p>
+          {/* {hasWorkWindow && status.totalSecondsToday !== status.workingSecondsToday && (
+            <p className="mt-1 font-mono text-xs tabular-nums opacity-40">
+              Total: {formatTimer(status.totalSecondsToday)}
+            </p>
+          )} */}
         </div>
       </CardContent>
     </Card>

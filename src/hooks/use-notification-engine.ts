@@ -70,7 +70,8 @@ function getLocalDate(): string {
 
 export function useNotificationEngine(settings: EngineSettings) {
   const { status } = usePunchData() // always today — no date arg
-  const localSeconds = status?.totalSecondsToday ?? 0
+  // Use working seconds (respects work window) — falls back to total when no window
+  const localSeconds = status?.workingSecondsToday ?? 0
 
   // `${date}:${notificationId}` → fired this session
   const firedRef = useRef<Set<string>>(new Set())

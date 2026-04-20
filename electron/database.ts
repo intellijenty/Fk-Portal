@@ -89,6 +89,13 @@ export function initDatabase(): void {
       cached_at TEXT NOT NULL,
       is_permanent INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS day_work_windows (
+      date TEXT PRIMARY KEY,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      source TEXT NOT NULL CHECK(source IN ('default', 'nightshift', 'manual'))
+    );
   `)
 
   // Insert default settings if not exist
@@ -112,6 +119,13 @@ export function initDatabase(): void {
     notifyEodMinutes: "5",
     notifyEodMessage: "EOD Reminder! We are close to reach our target!",
     notifyEodSource: "local",
+    // Work boundary
+    workBoundaryStart: "",
+    workBoundaryEnd: "",
+    // Night shift
+    nightShiftEnabled: "false",
+    nightShiftStart: "22:00",
+    nightShiftEnd: "06:00",
   }
 
   const insertSetting = db.prepare(
@@ -145,6 +159,9 @@ export function insertEntry(
     triggerLabel,
     notes || null
   )
+
+  // Snapshot the work window for this date if it's the first entry
+  snapshotWorkWindowIfNeeded(localDate)
 
   return getEntryById(result.lastInsertRowid as number)!
 }
@@ -298,6 +315,165 @@ export function getAllSettings(): Record<string, string> {
     settings[row.key] = row.value
   }
   return settings
+}
+
+// ── Work windows ─────────────────────────────────────────────────────────────
+
+export interface DBWorkWindow {
+  date: string
+  start_time: string // "HH:MM"
+  end_time: string   // "HH:MM"
+  source: "default" | "nightshift" | "manual"
+}
+
+export function getWorkWindow(date: string): DBWorkWindow | undefined {
+  return db
+    .prepare("SELECT * FROM day_work_windows WHERE date = ?")
+    .get(date) as DBWorkWindow | undefined
+}
+
+export function setWorkWindow(
+  date: string,
+  startTime: string,
+  endTime: string,
+  source: "default" | "nightshift" | "manual"
+): void {
+  db.prepare(
+    "INSERT OR REPLACE INTO day_work_windows (date, start_time, end_time, source) VALUES (?, ?, ?, ?)"
+  ).run(date, startTime, endTime, source)
+}
+
+export function deleteWorkWindow(date: string): void {
+  db.prepare("DELETE FROM day_work_windows WHERE date = ?").run(date)
+}
+
+export function getAllWorkWindows(): DBWorkWindow[] {
+  return db
+    .prepare("SELECT * FROM day_work_windows ORDER BY date ASC")
+    .all() as DBWorkWindow[]
+}
+
+/**
+ * Resolve the effective work window for a date.
+ * Priority: stored per-day window → current default settings → null (no window).
+ */
+export function resolveWorkWindow(
+  date: string
+): { start: string; end: string } | null {
+  const stored = getWorkWindow(date)
+  if (stored) return { start: stored.start_time, end: stored.end_time }
+
+  const start = getSetting("workBoundaryStart")
+  const end = getSetting("workBoundaryEnd")
+  if (start && end) return { start, end }
+
+  return null
+}
+
+/**
+ * Snapshot the current default work boundary for a date if no window exists yet.
+ * Called when the first entry lands on a new date.
+ */
+export function snapshotWorkWindowIfNeeded(date: string): void {
+  const existing = getWorkWindow(date)
+  if (existing) return
+
+  const start = getSetting("workBoundaryStart")
+  const end = getSetting("workBoundaryEnd")
+  if (start && end) {
+    setWorkWindow(date, start, end, "default")
+  }
+}
+
+/**
+ * Calculate working seconds for a date, clamping sessions to the work window.
+ * If no work window exists, returns the same as calculateTotalSecondsForDate.
+ */
+export function calculateWorkingSecondsForDate(date: string): number {
+  const window = resolveWorkWindow(date)
+  if (!window) return calculateTotalSecondsForDate(date)
+
+  const entries = db
+    .prepare(
+      "SELECT * FROM entries WHERE date = ? ORDER BY timestamp ASC, id ASC"
+    )
+    .all(date) as DBEntry[]
+
+  return sumSessionsWithWindow(entries, window, date)
+}
+
+/**
+ * Build the time ranges for a work window on a given date.
+ * Normal window (start < end): single range [start, end].
+ * Wrapped window (start > end, e.g. 22:00–06:00): two ranges
+ *   [00:00, end] and [start, 24:00] on the same calendar date.
+ */
+function buildWindowRanges(
+  window: { start: string; end: string },
+  date: string
+): Array<[number, number]> {
+  const winStart = new Date(`${date}T${window.start}:00`).getTime()
+  const winEnd = new Date(`${date}T${window.end}:00`).getTime()
+
+  if (winStart <= winEnd) {
+    return [[winStart, winEnd]]
+  }
+
+  // Wrapped: early morning [00:00, end] + late night [start, 24:00]
+  const dayStart = new Date(`${date}T00:00:00`).getTime()
+  const dayEnd = new Date(`${date}T23:59:59`).getTime() + 1000
+  return [
+    [dayStart, winEnd],
+    [winStart, dayEnd],
+  ]
+}
+
+/**
+ * Core clamping logic: sum LOGIN→LOGOUT pairs clamped to a work window.
+ */
+function sumSessionsWithWindow(
+  entries: DBEntry[],
+  window: { start: string; end: string },
+  date: string
+): number {
+  const ranges = buildWindowRanges(window, date)
+
+  let totalSeconds = 0
+  let loginTime: number | null = null
+
+  for (const entry of entries) {
+    if (entry.type === "LOGIN") {
+      loginTime = new Date(entry.timestamp).getTime()
+    } else if (entry.type === "LOGOUT" && loginTime !== null) {
+      const logoutTime = new Date(entry.timestamp).getTime()
+      for (const [rStart, rEnd] of ranges) {
+        totalSeconds += clampedDuration(loginTime, logoutTime, rStart, rEnd)
+      }
+      loginTime = null
+    }
+  }
+
+  // If currently logged in, clamp "now" to the ranges
+  if (loginTime !== null) {
+    const now = Date.now()
+    for (const [rStart, rEnd] of ranges) {
+      totalSeconds += clampedDuration(loginTime, now, rStart, rEnd)
+    }
+  }
+
+  return Math.max(0, Math.floor(totalSeconds))
+}
+
+function clampedDuration(
+  start: number,
+  end: number,
+  winStart: number,
+  winEnd: number
+): number {
+  const effectiveStart = Math.max(start, winStart)
+  const effectiveEnd = Math.min(end, winEnd)
+  if (effectiveStart >= effectiveEnd) return 0
+  return (effectiveEnd - effectiveStart) / 1000
 }
 
 export function closeDatabase(): void {
