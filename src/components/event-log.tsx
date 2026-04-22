@@ -7,14 +7,6 @@ import {
 } from "@/components/ui/collapsible"
 import type { PunchEntry, WorkWindow } from "@/lib/types"
 
-function formatUpdateTime(date: Date): string {
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-}
-
 interface EventLogProps {
   entries: PunchEntry[]
   lastUpdated: Date
@@ -31,13 +23,6 @@ export function EventLog({ entries, lastUpdated, workWindow, onDelete, onEdit }:
 
   return (
     <div className="flex flex-col rounded-xl border border-border/50 bg-card/20">
-      <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3">
-        <h2 className="text-sm font-semibold">Today&apos;s Log</h2>
-        <span className="text-xs text-muted-foreground">
-          Updated {formatUpdateTime(lastUpdated)}
-        </span>
-      </div>
-
       <div className="p-3">
         {entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">

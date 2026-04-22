@@ -159,20 +159,21 @@ export function WeeklyStats({
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
               {wb.workingDays > 0
                 ? formatHM(Math.round(wb.totalWorked / wb.workingDays))
-                : "—"}
+                : "0h"}
             </p>
           </div>
           <div className="rounded-lg border-2 border-card bg-muted/30 px-3 py-2.5">
             <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Weekly Balance
+              Flex Balance
             </p>
             <p
               className={cn(
                 "mt-1 font-mono text-lg font-semibold tabular-nums",
-                wb.balance >= 0 ? "text-emerald-400" : "text-amber-400"
+                wb.balance > 0 && "text-emerald-400",
+                wb.balance < 0 && "text-amber-400"
               )}
             >
-              {formatSignedHM(wb.balance)}
+              {wb.balance ? formatSignedHM(wb.balance) : "0h"}
             </p>
           </div>
         </div>

@@ -33,7 +33,7 @@ export function PortalStatusCard({
     <Card
       className={`relative overflow-hidden border-0 ${
         isIn
-          ? "bg-blue-950/80 text-blue-50"
+          ? "bg-emerald-950/80 text-emerald-50"
           : "bg-muted/50 text-muted-foreground"
       }`}
     >
@@ -42,14 +42,14 @@ export function PortalStatusCard({
           <span
             className={`inline-block h-2 w-2 rounded-full ${
               isIn
-                ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.5)]"
+                ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
                 : "bg-muted-foreground/50"
             }`}
           />
-          Portal
+          Status
         </div>
         <div className="mt-2 text-2xl font-bold tracking-tight">
-          {isIn ? "CHECKED IN" : "CHECKED OUT"}
+          {isIn ? "PUNCHED IN" : "PUNCHED OUT"}
         </div>
         {isIn && lastInTime && (
           <p className="mt-1 text-sm opacity-70">

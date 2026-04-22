@@ -32,7 +32,7 @@ export function StatusCard({ status }: StatusCardProps) {
     <Card
       className={`relative overflow-hidden border-0 ${
         isIn
-          ? "bg-emerald-950/80 text-emerald-50"
+          ? "bg-blue-950/80 text-blue-50"
           : "bg-muted/50 text-muted-foreground"
       }`}
     >
@@ -40,13 +40,13 @@ export function StatusCard({ status }: StatusCardProps) {
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider opacity-80">
           <span
             className={`inline-block h-2 w-2 rounded-full ${
-              isIn ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-muted-foreground/50"
+              isIn ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.5)]" : "bg-muted-foreground/50"
             }`}
           />
           Status
         </div>
         <div className="mt-2 text-2xl font-bold tracking-tight">
-          {isIn ? "PUNCHED IN" : "PUNCHED OUT"}
+          {isIn ? "CHECKED IN" : "CHECKED OUT"}
         </div>
         {status.lastEntry && (
           <p className="mt-1 text-sm opacity-70">
