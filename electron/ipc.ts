@@ -296,6 +296,20 @@ export function registerIpcHandlers(
     force: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<{ data: any | null; fromCache: boolean; permanent: boolean; error?: string }> {
+
+    // Today's data is NEVER stored in SQLite — always fetch fresh from the API.
+    // It lives only in the renderer's in-memory React state.
+    if (date === getLocalDate()) {
+      const apiDate = `${date}T00:00:00.000Z`
+      const result = await hrmsGetWorkingHours(apiDate)
+      return {
+        data: result.success ? result : null,
+        fromCache: false,
+        permanent: false,
+        error: result.success ? undefined : result.message,
+      }
+    }
+
     const permanent = isDatePermanent(date)
 
     // Permanent dates: always serve from cache (immutable biometric data)
@@ -305,20 +319,20 @@ export function registerIpcHandlers(
       // Not cached yet — fall through to fetch
     }
 
-    // Non-permanent: serve from cache unless forced
+    // Non-permanent past dates: serve from cache unless forced
     if (!force) {
       const cached = getFromCache(date)
       if (cached) return { data: cached.data, fromCache: true, permanent: false }
     }
 
-    // Fetch from HRMS API
+    // Fetch from HRMS API and store in SQLite
     const apiDate = `${date}T00:00:00.000Z`
     const result = await hrmsGetWorkingHours(apiDate)
     if (result.success) {
       setToCache(date, result)
     }
     return {
-      data: result,
+      data: result.success ? result : null,
       fromCache: false,
       permanent: false,
       error: result.success ? undefined : result.message,

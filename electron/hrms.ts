@@ -45,6 +45,7 @@ function storeCredentials(email: string, password: string): void {
 export function clearCredentials(): void {
   setSetting("hrmsEmail", "")
   setSetting("hrmsPassword", "")
+  setSetting("hrmsUserName", "")
   token = null
   userId = null
   userName = null
@@ -59,7 +60,9 @@ export function getHrmsConnectionStatus(): {
   const creds = getStoredCredentials()
   return {
     connected: token !== null,
-    userName,
+    // Fall back to DB-persisted name so it survives restarts
+    // (module variable is null until first login/auto-login this session)
+    userName: userName || getSetting("hrmsUserName") || null,
     userId,
     hasCredentials: creds !== null,
   }
@@ -100,6 +103,9 @@ export async function hrmsLogin(
       token = result.token
       userId = result.data.user_id
       userName = result.data.name
+
+      // Persist name so getHrmsConnectionStatus returns it immediately on restart
+      setSetting("hrmsUserName", userName)
 
       // Store credentials on explicit login
       if (email && password) {

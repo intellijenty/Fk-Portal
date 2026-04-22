@@ -117,10 +117,12 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
 
   const syncingRef = useRef<Set<string>>(new Set())
   const cacheRef = useRef<Record<string, DayCacheEntry>>(cache)
+  const statusRef = useRef(status)
   const lastGlobalRefreshRef = useRef<number>(0)
 
-  // Keep cacheRef in sync with latest cache state (no stale closures in callbacks)
+  // Keep refs in sync with latest state (no stale closures in callbacks)
   cacheRef.current = cache
+  statusRef.current = status
 
   const connected = status.connected || status.hasCredentials
 
@@ -137,16 +139,29 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
     return s
   }, [])
 
+  // Stable ref so refreshDay/refreshRange can call fetchStatus without it
+  // appearing in their dependency arrays (they use refs only — stable, no resubscribes)
+  const fetchStatusRef = useRef(fetchStatus)
+  fetchStatusRef.current = fetchStatus
+
   // ── Core: fetch + cache a single date ──
 
   const refreshDay = useCallback(
     async (date: string, force = false): Promise<void> => {
+      const today = new Date().toLocaleDateString("en-CA")
+
       // Skip if already syncing this date
       if (syncingRef.current.has(date)) return
 
-      // Skip permanent cached dates unless forced
       const existing = cacheRef.current[date]
+
+      // Skip permanent cached dates unless forced
       if (!force && existing?.permanent) return
+
+      // Skip past dates already in React memory — SQLite would return the same
+      // data and the API doesn't need to be hit. Today is always re-fetched
+      // (never SQLite-cached; IPC always hits the API for it).
+      if (!force && date !== today && existing) return
 
       syncingRef.current.add(date)
       setSyncing(new Set(syncingRef.current))
@@ -176,6 +191,11 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
             delete next[date]
             return next
           })
+          // If the main process just auto-logged in (token was null before this
+          // fetch), sync status so the renderer reflects connected=true and userName
+          if (!statusRef.current.connected) {
+            fetchStatusRef.current()
+          }
         } else if (result.error) {
           setErrors((prev) => ({ ...prev, [date]: result.error! }))
         }
@@ -196,10 +216,14 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
 
   const refreshRange = useCallback(
     async (dates: string[], force = false): Promise<void> => {
-      // Filter to dates that need fetching
+      const today = new Date().toLocaleDateString("en-CA")
+
+      // Filter to dates that actually need fetching
       const toFetch = dates.filter((d) => {
         if (syncingRef.current.has(d)) return false
         if (!force && cacheRef.current[d]?.permanent) return false
+        // Skip past dates already in React memory (same reasoning as refreshDay)
+        if (!force && d !== today && cacheRef.current[d]) return false
         return true
       })
       if (toFetch.length === 0) return
@@ -246,6 +270,13 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
           }
           return next
         })
+
+        // Sync status if any fetch succeeded while we weren't marked connected
+        // (covers the transparent auto-login inside hrmsGetWorkingHours)
+        const anySuccess = results.some((r) => r.data)
+        if (anySuccess && !statusRef.current.connected) {
+          fetchStatusRef.current()
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to fetch"
         setErrors((prev) => {
@@ -325,7 +356,10 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
     return () => clearInterval(id)
   }, [])
 
-  // Focus: throttled global refresh of all mutable cached dates
+  // Focus / visibility: throttled refresh of today's live data.
+  // Today is never SQLite-cached, so this always hits the API — giving fresh data
+  // when the user returns to the app. Past dates stay as-is (SQLite is the source
+  // of truth for them; re-fetching would return identical data).
   useEffect(() => {
     const handleFocus = () => {
       if (!connected) return
@@ -333,12 +367,8 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
       if (now - lastGlobalRefreshRef.current < THROTTLE_MS) return
       lastGlobalRefreshRef.current = now
 
-      const mutableDates = Object.entries(cacheRef.current)
-        .filter(([, entry]) => !entry.permanent)
-        .map(([date]) => date)
-      if (mutableDates.length > 0) {
-        refreshRange(mutableDates, false)
-      }
+      const today = new Date().toLocaleDateString("en-CA")
+      refreshRange([today], false)
     }
     window.addEventListener("focus", handleFocus)
     return () => window.removeEventListener("focus", handleFocus)

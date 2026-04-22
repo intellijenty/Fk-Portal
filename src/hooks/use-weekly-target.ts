@@ -33,7 +33,10 @@ export interface WeeklyTargetResult {
 export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
   const today = getLocalDate()
   const weekDays = getDaysOfWeek(getWeekRange(today).start)
-  const { summaries } = usePortalRange(weekDays)
+  // Today's contribution comes from todayLiveMinutes — no portal fetch needed for it here.
+  // Exclude today so this hook never triggers an unnecessary API call when the user navigates away from today's view.
+  const pastWeekDays = weekDays.filter((d) => d < today)
+  const { summaries } = usePortalRange(pastWeekDays)
   const { dayMarks } = useDayMarks()
 
   return useMemo(() => {
