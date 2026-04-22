@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   portalInvalidateAll: () => ipcRenderer.invoke("portal-cache-invalidate-all"),
   portalPopulate: (dates: string[]) =>
     ipcRenderer.invoke("portal-cache-populate", dates),
+  portalSyncNonPermanent: () =>
+    ipcRenderer.invoke("portal-sync-non-permanent"),
 
   // ── Work windows ──
   getWorkWindow: (date: string) =>

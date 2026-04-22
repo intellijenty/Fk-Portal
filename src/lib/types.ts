@@ -225,6 +225,12 @@ export interface ElectronAPI {
   portalInvalidate: (dates: string[]) => Promise<void>
   portalInvalidateAll: () => Promise<void>
   portalPopulate: (dates: string[]) => Promise<{ date: string; success: boolean }[]>
+  portalSyncNonPermanent: () => Promise<{
+    results: { date: string; success: boolean; promoted: boolean; error?: string }[]
+    synced: number
+    promoted: number
+    failed: number
+  }>
 
   // Leave data
   leaveSync: () => Promise<LeaveSyncResult>

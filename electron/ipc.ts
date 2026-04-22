@@ -37,6 +37,7 @@ import {
   invalidateDates,
   invalidateAll,
 } from "./portal-cache"
+import { syncNonPermanentDays } from "./portal-sync"
 
 function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
@@ -388,5 +389,11 @@ export function registerIpcHandlers(
       })
     )
     return results
+  })
+
+  // ── Non-permanent sync ──
+
+  ipcMain.handle("portal-sync-non-permanent", async () => {
+    return syncNonPermanentDays()
   })
 }

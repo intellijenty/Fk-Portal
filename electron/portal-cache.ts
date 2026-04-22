@@ -62,6 +62,13 @@ export function getCacheStatus(date: string): CacheStatus {
   return { cached: true, permanent: row.is_permanent === 1, cachedAt: row.cached_at }
 }
 
+export function getNonPermanentCachedDates(): string[] {
+  const rows = getDb()
+    .prepare("SELECT date FROM portal_cache WHERE is_permanent = 0 ORDER BY date ASC")
+    .all() as { date: string }[]
+  return rows.map((r) => r.date)
+}
+
 export function invalidateDates(dates: string[]): void {
   const stmt = getDb().prepare("DELETE FROM portal_cache WHERE date = ?")
   for (const date of dates) stmt.run(date)
