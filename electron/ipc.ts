@@ -38,6 +38,7 @@ import {
   invalidateAll,
 } from "./portal-cache"
 import { syncNonPermanentDays } from "./portal-sync"
+import { runDailySync } from "./daily-sync"
 
 function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
@@ -395,5 +396,14 @@ export function registerIpcHandlers(
 
   ipcMain.handle("portal-sync-non-permanent", async () => {
     return syncNonPermanentDays()
+  })
+
+  // ── Daily sync ──
+
+  ipcMain.handle("daily-sync-run", async (_event, force?: boolean) => {
+    const report = await runDailySync(force ?? false)
+    // Notify renderer to reload day_marks — syncLeaves writes to day_marks table
+    if (!report.skipped) onDataChange()
+    return report
   })
 }

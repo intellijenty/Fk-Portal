@@ -10,6 +10,7 @@ import { startMonitoring, flushPendingLogout } from "./monitor"
 import { createTray, updateTrayStatus, destroyTray } from "./tray"
 import { registerIpcHandlers } from "./ipc"
 import { registerHotkey, unregisterHotkey } from "./hotkey"
+import { scheduleDailySync } from "./daily-sync"
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -199,6 +200,10 @@ if (!gotLock) {
 
     // Start monitoring power events
     startMonitoring(notifyRenderer, 15)
+
+    // Start daily background sync (leaves + portal cache)
+    // notifyRenderer is passed so the renderer reloads day_marks after leave sync
+    scheduleDailySync(notifyRenderer)
   })
 
   app.on("window-all-closed", () => {

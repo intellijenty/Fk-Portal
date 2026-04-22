@@ -1,0 +1,111 @@
+/**
+ * daily-sync.ts — once-per-startup background synchronisation job.
+ *
+ * Operations (in order):
+ *   1. syncLeaves           — fetch approved leaves from portal, update day_marks
+ *   2. syncNonPermanentDays — refresh non-permanent portal cache entries, promote eligible ones
+ *
+ * Strategy:
+ *   - The last-synced date is persisted in the settings table under "lastDailySyncDate".
+ *   - On app start, the job runs once (after a short boot delay) if today has not been synced yet.
+ *   - Sync is skipped silently when no HRMS credentials are configured.
+ *   - The date is marked as synced regardless of individual operation outcomes so persistent
+ *     server failures do not cause repeated retries. The next app start will try again.
+ */
+
+import { syncLeaves, type LeaveSyncResult } from "./leave-sync"
+import { syncNonPermanentDays, type SyncSummary } from "./portal-sync"
+import { getSetting, setSetting } from "./database"
+import { getHrmsConnectionStatus } from "./hrms"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface DailySyncReport {
+  date: string
+  skipped: boolean
+  skipReason?: "already_synced" | "no_credentials"
+  leaves?: LeaveSyncResult
+  portalDays?: SyncSummary
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+const SETTING_KEY = "lastDailySyncDate"
+
+function getLocalDate(): string {
+  return new Date().toLocaleDateString("en-CA")
+}
+
+function getLastSyncDate(): string | null {
+  return getSetting(SETTING_KEY) || null
+}
+
+function markSyncedToday(date: string): void {
+  setSetting(SETTING_KEY, date)
+}
+
+function isSyncDue(): boolean {
+  return getLastSyncDate() !== getLocalDate()
+}
+
+// ── Core sync operations ──────────────────────────────────────────────────────
+
+async function runSyncOperations(): Promise<Pick<DailySyncReport, "leaves" | "portalDays">> {
+  const leaves = await syncLeaves()
+  const portalDays = await syncNonPermanentDays()
+  return { leaves, portalDays }
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Run the daily sync. Skips when already synced today or when no credentials
+ * are configured. Pass force=true to bypass the "already synced" guard (e.g.
+ * from a manual UI trigger).
+ */
+export async function runDailySync(force = false): Promise<DailySyncReport> {
+  const today = getLocalDate()
+
+  if (!force && !isSyncDue()) {
+    console.log(`[daily-sync] Already synced today (${today}), skipping`)
+    return { date: today, skipped: true, skipReason: "already_synced" }
+  }
+
+  if (!getHrmsConnectionStatus().hasCredentials) {
+    console.log("[daily-sync] No HRMS credentials configured, skipping")
+    return { date: today, skipped: true, skipReason: "no_credentials" }
+  }
+
+  console.log(`[daily-sync] Starting daily sync for ${today}`)
+
+  const results = await runSyncOperations()
+
+  markSyncedToday(today)
+
+  console.log(
+    `[daily-sync] Done - leaves: ${results.leaves?.success ? `${results.leaves.synced} synced, ${results.leaves.daysMarked} days marked` : `failed (${results.leaves?.message})`}` +
+    ` | portal: ${results.portalDays?.synced} synced, ${results.portalDays?.promoted} promoted, ${results.portalDays?.failed} failed`
+  )
+
+  return { date: today, skipped: false, ...results }
+}
+
+// ── Scheduler ────────────────────────────────────────────────────────────────
+
+/**
+ * Schedule a one-time startup sync. Runs once after a short boot delay so the
+ * app and renderer finish initialising before any network calls begin.
+ * Call once from app.whenReady().
+ *
+ * @param onComplete Called when a sync actually ran (not when skipped). Use this
+ *                   to notify the renderer of data changes (e.g. updated day_marks).
+ */
+export function scheduleDailySync(onComplete?: () => void): void {
+  setTimeout(() => {
+    runDailySync()
+      .then((report) => {
+        if (!report.skipped) onComplete?.()
+      })
+      .catch((err) => console.error("[daily-sync] Unexpected error:", err))
+  }, 5000)
+}

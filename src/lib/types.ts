@@ -231,6 +231,13 @@ export interface ElectronAPI {
     promoted: number
     failed: number
   }>
+  dailySyncRun: (force?: boolean) => Promise<{
+    date: string
+    skipped: boolean
+    skipReason?: "already_synced" | "no_credentials"
+    leaves?: { success: boolean; synced: number; total: number; daysMarked: number; message?: string }
+    portalDays?: { results: unknown[]; synced: number; promoted: number; failed: number }
+  }>
 
   // Leave data
   leaveSync: () => Promise<LeaveSyncResult>

@@ -59,7 +59,7 @@ export async function syncNonPermanentDays(): Promise<SyncSummary> {
   const promoted = results.filter((r) => r.promoted).length
   const failed = results.filter((r) => !r.success).length
 
-  console.log(`[portal-sync] Done — synced: ${synced}, promoted: ${promoted}, failed: ${failed}`)
+  console.log(`[portal-sync] Done - synced: ${synced}, promoted: ${promoted}, failed: ${failed}`)
   if (failed > 0) {
     const errors = results.filter((r) => !r.success).map((r) => `${r.date}: ${r.error}`)
     console.warn(`[portal-sync] Failures:\n${errors.join("\n")}`)
