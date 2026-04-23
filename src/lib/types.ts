@@ -171,6 +171,16 @@ export interface PortalRangeResult extends PortalDayResult {
   date: string
 }
 
+export interface LicenseResponse {
+  success: boolean;
+  message?: string;
+}
+export interface ILicenseAPI {
+  getHwid: () => Promise<string>;
+  submitLicense: (key: string) => Promise<LicenseResponse>;
+  checkStatus: () => Promise<boolean>;
+}
+
 export interface ElectronAPI {
   getEvents: (date: string) => Promise<PunchEntry[]>
   getStatus: (date?: string) => Promise<PunchStatus>
@@ -252,6 +262,7 @@ export interface ElectronAPI {
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI
+    electronAPI: ElectronAPI;
+    licenseAPI: ILicenseAPI;
   }
 }

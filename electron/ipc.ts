@@ -39,6 +39,8 @@ import {
 } from "./portal-cache"
 import { syncNonPermanentDays } from "./portal-sync"
 import { runDailySync } from "./daily-sync"
+import ElectronStore from 'electron-store';
+import { LicenseEngine } from './license-engine';
 
 function getLocalDate(): string {
   return new Date().toLocaleDateString("en-CA") // YYYY-MM-DD
@@ -79,10 +81,26 @@ function buildSettingsResponse(raw: Record<string, string>) {
 const NARROW_WIDTH = 480
 const NARROW_HEIGHT = 780
 
+const electronStore = new ElectronStore();
+const licenseEngine = new LicenseEngine();
+
 export function registerIpcHandlers(
   onDataChange: () => void,
   getWindow: () => BrowserWindow | null
 ): void {
+  // License handlers
+  ipcMain.handle('license:get-hwid', () => licenseEngine.getHardwareId());
+  
+  ipcMain.handle('license:check-status', () => licenseEngine.verify(electronStore.get('license_key') as string));
+  
+  ipcMain.handle('license:submit', (_event, key: string) => {
+    if (licenseEngine.verify(key)) {
+      electronStore.set('license_key', key);
+      return { success: true };
+    }
+    return { success: false, message: 'Invalid License Key' };
+  });
+  
   ipcMain.handle("show-notification", (_event, title: string, body: string) => {
     if (Notification.isSupported()) {
       new Notification({ title, body }).show()

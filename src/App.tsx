@@ -37,6 +37,7 @@ import { useNotificationEngine } from "@/hooks/use-notification-engine"
 import { useNotificationSettings } from "@/hooks/use-notification-settings"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
+import LicenseMonitor from "./components/LicenseMonitor"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -140,7 +141,9 @@ function NarrowLayout() {
           <StatusCard status={status} />
           <TotalCard
             totalSeconds={status.totalSecondsToday}
-            workingSeconds={status.workWindow ? status.workingSecondsToday : undefined}
+            workingSeconds={
+              status.workWindow ? status.workingSecondsToday : undefined
+            }
             isIn={status.isIn}
           />
         </div>
@@ -176,7 +179,12 @@ interface WideLayoutProps {
     mark: import("@/lib/week-utils").DayMark | null
   ) => void
   workWindows: Map<string, import("@/lib/types").DayWorkWindow>
-  onSetWorkWindow: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onSetWorkWindow: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source?: "nightshift" | "manual"
+  ) => void
   onDeleteWorkWindow: (date: string) => void
   nightShift: import("@/lib/types").NightShiftConfig
 }
@@ -449,7 +457,12 @@ interface AppInnerProps {
     mark: import("@/lib/week-utils").DayMark | null
   ) => void
   workWindows: Map<string, import("@/lib/types").DayWorkWindow>
-  onSetWorkWindow: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onSetWorkWindow: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source?: "nightshift" | "manual"
+  ) => void
   onDeleteWorkWindow: (date: string) => void
   nightShift: import("@/lib/types").NightShiftConfig
 }
@@ -540,10 +553,13 @@ export default function App() {
           onCycleMark={cycleMark}
           onSetMark={setMark}
           workWindows={workWindows}
-          onSetWorkWindow={(date, start, end, source) => setWorkWindow(date, start, end, source || "manual")}
+          onSetWorkWindow={(date, start, end, source) =>
+            setWorkWindow(date, start, end, source || "manual")
+          }
           onDeleteWorkWindow={deleteWorkWindow}
           nightShift={nightShift}
         />
+        <LicenseMonitor />
       </PortalStoreProvider>
       <Toaster />
     </TooltipProvider>

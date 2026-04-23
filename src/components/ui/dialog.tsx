@@ -52,13 +52,14 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  overlayBlur = "supports-backdrop-filter:backdrop-blur-sm",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayBlur} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(

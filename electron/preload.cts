@@ -85,3 +85,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("show-notification", title, body),
   restartApp: () => ipcRenderer.invoke("restart-app"),
 })
+
+contextBridge.exposeInMainWorld('licenseAPI', {
+  getHwid: () => ipcRenderer.invoke('license:get-hwid'),
+  submitLicense: (key: string) => ipcRenderer.invoke('license:submit', key),
+  checkStatus: () => ipcRenderer.invoke('license:check-status'),
+});
