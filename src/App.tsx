@@ -35,6 +35,7 @@ import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
 import { useAppShortcuts } from "@/hooks/use-app-shortcuts"
 import { useNotificationEngine } from "@/hooks/use-notification-engine"
 import { useNotificationSettings } from "@/hooks/use-notification-settings"
+import { useUpdater } from "@/hooks/use-updater"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 import LicenseMonitor from "./components/LicenseMonitor"
@@ -47,6 +48,11 @@ const ULTRA_WIDE_BREAKPOINT = 1200
 // ── Notification engine bridge ────────────────────────────────────────────────
 // Mounts inside PortalStoreProvider so usePunchData can subscribe to IPC.
 // Loads settings independently — keeps App root clean.
+
+function AppUpdater() {
+  useUpdater()
+  return null
+}
 
 function AppNotifications() {
   const { prefs } = useNotificationSettings()
@@ -543,6 +549,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <PortalStoreProvider>
+        <AppUpdater />
         <AppNotifications />
         <AppInner
           isUltraWide={isUltraWide}

@@ -84,6 +84,43 @@ contextBridge.exposeInMainWorld("electronAPI", {
   showNotification: (title: string, body: string) =>
     ipcRenderer.invoke("show-notification", title, body),
   restartApp: () => ipcRenderer.invoke("restart-app"),
+
+  // ── Auto-update ──
+  getAppVersion: () => ipcRenderer.invoke("app:version"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+
+  onUpdateChecking: (cb: () => void) => {
+    const fn = () => cb()
+    ipcRenderer.on("update:checking", fn)
+    return () => ipcRenderer.removeListener("update:checking", fn)
+  },
+  onUpdateAvailable: (cb: (info: { version: string; releaseNotes?: string }) => void) => {
+    const fn = (_: unknown, info: { version: string; releaseNotes?: string }) => cb(info)
+    ipcRenderer.on("update:available", fn)
+    return () => ipcRenderer.removeListener("update:available", fn)
+  },
+  onUpdateNotAvailable: (cb: () => void) => {
+    const fn = () => cb()
+    ipcRenderer.on("update:not-available", fn)
+    return () => ipcRenderer.removeListener("update:not-available", fn)
+  },
+  onUpdateProgress: (cb: (p: { percent: number; transferred: number; total: number }) => void) => {
+    const fn = (_: unknown, p: { percent: number; transferred: number; total: number }) => cb(p)
+    ipcRenderer.on("update:progress", fn)
+    return () => ipcRenderer.removeListener("update:progress", fn)
+  },
+  onUpdateDownloaded: (cb: (info: { version: string }) => void) => {
+    const fn = (_: unknown, info: { version: string }) => cb(info)
+    ipcRenderer.on("update:downloaded", fn)
+    return () => ipcRenderer.removeListener("update:downloaded", fn)
+  },
+  onUpdateError: (cb: (msg: string) => void) => {
+    const fn = (_: unknown, msg: string) => cb(msg)
+    ipcRenderer.on("update:error", fn)
+    return () => ipcRenderer.removeListener("update:error", fn)
+  },
 })
 
 contextBridge.exposeInMainWorld('licenseAPI', {

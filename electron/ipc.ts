@@ -1,6 +1,7 @@
 import { app, ipcMain, BrowserWindow, Notification } from "electron"
 import { registerHotkey } from "./hotkey"
 import { syncLeaves } from "./leave-sync"
+import { checkForUpdates, downloadUpdate, quitAndInstall } from "./updater"
 import {
   getEntriesByDate,
   getLastEntry,
@@ -110,6 +111,21 @@ export function registerIpcHandlers(
   ipcMain.handle("restart-app", () => {
     app.relaunch()
     app.exit(0)
+  })
+
+  // ── Auto-update handlers ──
+  ipcMain.handle("app:version", () => app.getVersion())
+
+  ipcMain.handle("update:check", () => {
+    if (app.isPackaged) checkForUpdates()
+  })
+
+  ipcMain.handle("update:download", () => {
+    downloadUpdate()
+  })
+
+  ipcMain.handle("update:install", () => {
+    quitAndInstall()
   })
 
   ipcMain.handle("get-events", (_event, date: string) => {

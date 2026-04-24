@@ -11,6 +11,7 @@ import { createTray, updateTrayStatus, destroyTray } from "./tray"
 import { registerIpcHandlers } from "./ipc"
 import { registerHotkey, unregisterHotkey } from "./hotkey"
 import { scheduleDailySync } from "./daily-sync"
+import { initAutoUpdater, checkForUpdates } from "./updater"
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -204,6 +205,12 @@ if (!gotLock) {
     // Start daily background sync (leaves + portal cache)
     // notifyRenderer is passed so the renderer reloads day_marks after leave sync
     scheduleDailySync(notifyRenderer)
+
+    // Auto-updater: init after window is created, check 5s after boot
+    if (app.isPackaged) {
+      initAutoUpdater(() => mainWindow)
+      setTimeout(() => checkForUpdates(), 5000)
+    }
   })
 
   app.on("window-all-closed", () => {

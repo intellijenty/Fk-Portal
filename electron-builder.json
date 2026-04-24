@@ -1,0 +1,31 @@
+{
+  "appId": "in.yashpz.traccia",
+  "productName": "Traccia",
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*"
+  ],
+  "extraResources": [
+    "dist-electron/preload.js",
+    "src/assets/**",
+    {
+      "from": "node_modules/better-sqlite3/build",
+      "to": "better-sqlite3/build"
+    }
+  ],
+  "icon": "./desktopIcon.png",
+  "win": {
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": true,
+    "allowToChangeInstallationDirectory": false
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "intellijenty",
+      "repo": "Fk-Portal"
+    }
+  ]
+}

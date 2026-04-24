@@ -1,5 +1,10 @@
 {
-  "name": "login-monitor",
+  "name": "traccia",
+  "description": "A time tracking application built with Electron, React, and TypeScript.",
+  "author": {
+    "name": "yashpz",
+    "email": "yashpz.roima@gmail.com"
+  },
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -7,12 +12,17 @@
   "scripts": {
     "dev": "tsc -p tsconfig.preload.json && vite",
     "build": "tsc -b && tsc -p tsconfig.preload.json && vite build",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.preload.json",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "electron:build": "npm run build && electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "publish": "npm run build:renderer && npm run build:electron && electron-builder --win --publish always",
+    "release:patch": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
@@ -24,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.8.0",
     "motion": "^12.38.0",
@@ -59,27 +70,5 @@
     "vite": "^7.3.1",
     "vite-plugin-electron": "^0.29.1",
     "vite-plugin-electron-renderer": "^0.14.6"
-  },
-  "build": {
-    "appId": "com.loginmonitor.app",
-    "productName": "Punch Monitor",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "resources/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "node_modules/better-sqlite3/build",
-        "to": "better-sqlite3/build"
-      }
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "resources/icon.png"
-    }
   }
 }

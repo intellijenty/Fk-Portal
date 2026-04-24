@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useUpdater } from "@/hooks/use-updater"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
   Database02Icon,
   Cancel01Icon,
   UniversalAccessCircleIcon,
+  InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
@@ -35,6 +37,7 @@ const TABS = [
     label: "Accessibility",
     icon: UniversalAccessCircleIcon,
   },
+  { value: "about", label: "About", icon: InformationCircleIcon },
 ] as const
 
 type TabValue = (typeof TABS)[number]["value"]
@@ -617,7 +620,7 @@ function AccessibilityTab() {
         {/* Hotkey combination */}
         <div
           className={cn(
-            "space-y-2 transition-opacity",
+            "flex flex-col space-y-1 transition-opacity",
             !settings.enabled && "pointer-events-none opacity-40"
           )}
         >
@@ -636,7 +639,7 @@ function AccessibilityTab() {
         {/* Mode selector */}
         <div
           className={cn(
-            "space-y-2 transition-opacity",
+            "flex flex-col space-y-1 transition-opacity",
             !settings.enabled && "pointer-events-none opacity-40"
           )}
         >
@@ -676,6 +679,61 @@ function AccessibilityTab() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── About tab ────────────────────────────────────────────────────────────────
+
+function AboutTab() {
+  const [version, setVersion] = useState<string>("…")
+  const { checkNow } = useUpdater()
+
+  useEffect(() => {
+    if (isElectron) {
+      window.electronAPI.getAppVersion().then(setVersion)
+    }
+  }, [])
+
+  return (
+    <div className="space-y-6">
+      {/* App identity */}
+      <div className="flex flex-col items-center gap-3 py-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 ring-1 ring-border/40">
+          <span className="text-2xl font-bold tracking-tight">T</span>
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold">Traccia</p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground/60">
+            v{version}
+          </p>
+        </div>
+      </div>
+
+      <div className="h-px bg-border/40" />
+
+      {/* Updates */}
+      <SettingGroup
+        title="App Updates"
+        description="Updates are downloaded in the background and installed on restart."
+      >
+        <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3.5 py-3">
+          <div>
+            <p className="text-xs font-medium">Check for updates</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+              You'll be prompted before anything downloads.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-4 h-7 shrink-0 px-3 text-xs"
+            onClick={checkNow}
+          >
+            Check now
+          </Button>
+        </div>
+      </SettingGroup>
     </div>
   )
 }
@@ -776,8 +834,10 @@ export function SettingsDialog() {
                   <NotificationsTab />
                 ) : value === "data-controls" ? (
                   <DataControlsTab />
-                ) : (
+                ) : value === "accessibility" ? (
                   <AccessibilityTab />
+                ) : (
+                  <AboutTab />
                 )}
               </TabsContent>
             ))}

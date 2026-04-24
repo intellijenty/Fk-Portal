@@ -258,6 +258,18 @@ export interface ElectronAPI {
   windowToggleSize: () => Promise<void>
   showNotification: (title: string, body: string) => Promise<void>
   restartApp: () => Promise<void>
+
+  // Auto-update
+  getAppVersion: () => Promise<string>
+  checkForUpdates: () => Promise<void>
+  downloadUpdate: () => Promise<void>
+  installUpdate: () => Promise<void>
+  onUpdateChecking: (cb: () => void) => () => void
+  onUpdateAvailable: (cb: (info: { version: string; releaseNotes?: string }) => void) => () => void
+  onUpdateNotAvailable: (cb: () => void) => () => void
+  onUpdateProgress: (cb: (p: { percent: number; transferred: number; total: number }) => void) => () => void
+  onUpdateDownloaded: (cb: (info: { version: string }) => void) => () => void
+  onUpdateError: (cb: (msg: string) => void) => () => void
 }
 
 declare global {
