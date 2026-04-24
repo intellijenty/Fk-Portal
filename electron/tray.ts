@@ -1,4 +1,4 @@
-import { Tray, Menu, nativeImage, BrowserWindow, app } from "electron"
+import { Tray, Menu, nativeImage, BrowserWindow } from "electron"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -65,7 +65,7 @@ export function createTray(
   const icon = createTrayIcon("out")
   tray = new Tray(icon)
 
-  tray.setToolTip("Punch Monitor — OUT")
+  tray.setToolTip("Traccia - OUT")
   tray.setContextMenu(
     buildContextMenu(mainWindow, onPunchIn, onPunchOut, onQuit)
   )
@@ -99,7 +99,7 @@ export function updateTrayStatus(
   tray.setImage(icon)
 
   const statusText = status === "in" ? "IN" : "OUT"
-  tray.setToolTip(`Punch Monitor — ${statusText} | Today: ${timeStr}`)
+  tray.setToolTip(`Traccia - ${statusText} | Today: ${timeStr}`)
 
   tray.setContextMenu(
     buildContextMenu(mainWindow, onPunchIn, onPunchOut, onQuit)

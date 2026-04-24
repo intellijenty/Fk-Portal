@@ -224,7 +224,7 @@ function WideLayout({
                 className="text-muted-foreground"
               />
               <h1 className="text-base font-semibold tracking-tight">
-                Punch Monitor
+                Traccia
               </h1>
             </div>
             <SettingsDialog />
@@ -321,7 +321,7 @@ function UltraWideLayout({
                 className="text-muted-foreground"
               />
               <h1 className="text-base font-semibold tracking-tight">
-                Punch Monitor
+                Traccia
               </h1>
             </div>
             <SettingsDialog />

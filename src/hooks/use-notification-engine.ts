@@ -109,7 +109,7 @@ export function useNotificationEngine(settings: EngineSettings) {
       const targetSeconds = resolveSeconds(s.targetSource, localSeconds, s.portalSecondsToday)
       if (targetSeconds >= s.dailyTargetSeconds) {
         fireOnce("target-complete", () =>
-          deliver("system", "Punch Monitor", s.targetMessage)
+          deliver("system", "Traccia", s.targetMessage)
         )
       }
     }
@@ -125,7 +125,7 @@ export function useNotificationEngine(settings: EngineSettings) {
         eodSeconds < s.dailyTargetSeconds
       ) {
         fireOnce("eod-reminder", () =>
-          deliver("system", "Punch Monitor", s.eodMessage)
+          deliver("system", "Traccia", s.eodMessage)
         )
       }
     }
