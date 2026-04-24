@@ -51,11 +51,7 @@ const LicenseMonitor = () => {
 
   // still checking → block UI
   if (isAuthorized === null) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
-    )
+    return null
   }
 
   return (
@@ -92,7 +88,7 @@ const LicenseMonitor = () => {
         />
 
         {/* Error */}
-        {error && <p className="text-sm text-destructive mx-auto">{error}</p>}
+        {error && <p className="mx-auto text-sm text-destructive">{error}</p>}
 
         <DialogFooter>
           <Button

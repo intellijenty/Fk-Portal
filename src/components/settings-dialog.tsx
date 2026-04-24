@@ -608,23 +608,10 @@ function AccessibilityTab() {
               Register a global keyboard shortcut
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => save({ ...settings, enabled: !settings.enabled })}
-            className={cn(
-              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-              settings.enabled ? "bg-primary" : "bg-muted"
-            )}
-            role="switch"
-            aria-checked={settings.enabled}
-          >
-            <span
-              className={cn(
-                "pointer-events-none inline-block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                settings.enabled ? "translate-x-4" : "translate-x-0"
-              )}
-            />
-          </button>
+          <Switch
+            checked={settings.enabled}
+            onCheckedChange={() => save({ ...settings, enabled: !settings.enabled })}
+          />
         </div>
 
         {/* Hotkey combination */}
@@ -776,7 +763,7 @@ export function SettingsDialog() {
               <TabsContent
                 key={value}
                 value={value}
-                className="mt-0 flex h-full flex-col overflow-y-auto px-7 pt-6 pb-7"
+                className="mt-0 flex h-full flex-col overflow-y-auto px-7 pt-6 pb-7 no-scrollbar"
               >
                 <div className="mb-5">
                   <h2 className="text-sm font-semibold">{label}</h2>
