@@ -160,7 +160,7 @@ function createWindow(): void {
     frame: true,
     show: false,
     backgroundColor: "#0a0a0a",
-    icon: path.join(__dirname, "../desktopIcon.png"),
+    icon: path.join(__dirname, "../resources/desktopIcon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

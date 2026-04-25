@@ -9,11 +9,15 @@
     "dist-electron/preload.js",
     "src/assets/**",
     {
+      "from": "resources",
+      "to": "."
+    },
+    {
       "from": "node_modules/better-sqlite3/build",
       "to": "better-sqlite3/build"
     }
   ],
-  "icon": "./desktopIcon.png",
+  "icon": "./resources/desktopIcon.png",
   "win": {
     "target": "nsis"
   },
