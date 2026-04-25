@@ -83,6 +83,17 @@ export function useNotificationEngine(settings: EngineSettings) {
   const settingsRef = useRef<EngineSettings>(settings)
   useEffect(() => { settingsRef.current = settings })
 
+  // Restore fired keys from previous session for today only
+  useEffect(() => {
+    if (!isElectron) return
+    window.electronAPI.getSettings().then((s) => {
+      const today = getLocalDate()
+      for (const key of s.notificationsFiredKeys.split(",")) {
+        if (key.startsWith(today + ":")) firedRef.current.add(key)
+      }
+    })
+  }, [])
+
   useEffect(() => {
     const today = getLocalDate()
 
@@ -94,12 +105,21 @@ export function useNotificationEngine(settings: EngineSettings) {
 
     const s = settingsRef.current
 
-    /** Fire at most once per notification per calendar day. */
-    function fireOnce(id: NotificationId, fn: () => void) {
-      const key = `${today}:${id}`
+    /**
+     * Fire at most once per notification per calendar day.
+     * fingerprint — embed a config value (e.g. eodMinutes) so that changing
+     * the setting invalidates the cached "fired" state and allows re-firing.
+     */
+    function fireOnce(id: NotificationId, fn: () => void, fingerprint?: string) {
+      const key = fingerprint ? `${today}:${id}:${fingerprint}` : `${today}:${id}`
       if (firedRef.current.has(key)) return
       firedRef.current.add(key)
       fn()
+      if (isElectron) {
+        window.electronAPI.updateSettings({
+          notificationsFiredKeys: [...firedRef.current].join(","),
+        } as Parameters<typeof window.electronAPI.updateSettings>[0])
+      }
     }
 
     // ── Evaluate conditions ───────────────────────────────────────────────────
@@ -116,6 +136,8 @@ export function useNotificationEngine(settings: EngineSettings) {
 
     // 2. EOD reminder — fires once when remaining ≤ eodMinutes window,
     //    but only before the target is actually reached (avoids double-firing).
+    //    Fingerprinted by eodMinutes: changing the threshold invalidates the
+    //    cached fired state so the notification re-fires at the new threshold.
     if (s.eodEnabled) {
       const eodSeconds = resolveSeconds(s.eodSource, localSeconds, s.portalSecondsToday)
       const eodThresholdSeconds = s.dailyTargetSeconds - s.eodMinutes * 60
@@ -125,7 +147,8 @@ export function useNotificationEngine(settings: EngineSettings) {
         eodSeconds < s.dailyTargetSeconds
       ) {
         fireOnce("eod-reminder", () =>
-          deliver("system", "Traccia", s.eodMessage)
+          deliver("system", "Traccia", s.eodMessage),
+          String(s.eodMinutes)
         )
       }
     }

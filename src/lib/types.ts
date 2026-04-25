@@ -69,6 +69,8 @@ export interface AppSettings {
   nightShiftEnabled: boolean
   nightShiftStart: string // "HH:MM"
   nightShiftEnd: string   // "HH:MM"
+  // Notification fired-state persistence
+  notificationsFiredKeys: string
 }
 
 export interface WeekDaySummary {

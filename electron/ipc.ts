@@ -73,6 +73,8 @@ function buildSettingsResponse(raw: Record<string, string>) {
     nightShiftEnabled: raw.nightShiftEnabled === "true",
     nightShiftStart: raw.nightShiftStart || "22:00",
     nightShiftEnd: raw.nightShiftEnd || "06:00",
+    // Notification fired-state persistence
+    notificationsFiredKeys: raw.notificationsFiredKeys || "",
   }
 }
 
