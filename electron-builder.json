@@ -2,7 +2,7 @@
   "appId": "in.yashpz.traccia",
   "productName": "Traccia",
   "files": [
-    "dist/**/*",
+    "dist-react/**/*",
     "dist-electron/**/*"
   ],
   "extraResources": [

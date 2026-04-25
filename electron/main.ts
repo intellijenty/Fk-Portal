@@ -4,8 +4,23 @@ import { fileURLToPath } from "url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-import { initDatabase, insertEntry, getLastEntry, closeDatabase, calculateTotalSecondsForDate, getAllSettings } from "./database"
-import { readHeartbeat, startHeartbeat, stopHeartbeat, clearHeartbeat } from "./heartbeat"
+
+// Core modules
+import {
+  initDatabase,
+  insertEntry,
+  getLastEntry,
+  closeDatabase,
+  calculateTotalSecondsForDate,
+  getAllSettings,
+} from "./database"
+
+import {
+  readHeartbeat,
+  startHeartbeat,
+  stopHeartbeat,
+  clearHeartbeat,
+} from "./heartbeat"
 import { startMonitoring, flushPendingLogout } from "./monitor"
 import { createTray, updateTrayStatus, destroyTray } from "./tray"
 import { registerIpcHandlers } from "./ipc"
@@ -16,6 +31,43 @@ import { initAutoUpdater, checkForUpdates } from "./updater"
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
+// Environment & Configuration
+const isDev = !app.isPackaged
+const APP_NAME = app.getName()
+
+// Separate userData folder in development (keeps DB and settings independent)
+if (isDev) {
+  const devUserData = path.join(app.getPath("appData"), `${APP_NAME}-Dev`)
+  app.setPath("userData", devUserData)
+  console.log(`Development mode: Using separate userData - ${devUserData}`)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Single Instance Lock (only for packaged/production builds)
+// Allows Dev + Installed to run side-by-side
+// ─────────────────────────────────────────────────────────────
+const gotTheLock = isDev ? true : app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  console.log("Another instance is already running. Quitting...")
+  app.quit()
+  process.exit(0)
+}
+
+// Handle second instance attempts (only relevant for packaged app)
+if (!isDev) {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────
 function syncLoginItem(enabled: boolean): void {
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: enabled })
@@ -68,7 +120,6 @@ function handlePunchOut(): void {
 function handleQuit(): void {
   isQuitting = true
 
-  // If currently IN, log a LOGOUT
   const lastEntry = getLastEntry()
   if (lastEntry?.type === "LOGIN") {
     insertEntry("LOGOUT", "auto", "via quit")
@@ -85,7 +136,6 @@ function handleQuit(): void {
 function handleStartupRecovery(): void {
   const lastEntry = getLastEntry()
 
-  // If last entry is a LOGIN with no matching LOGOUT, session was orphaned
   if (lastEntry && lastEntry.type === "LOGIN") {
     const heartbeat = readHeartbeat()
     const estimatedTime = heartbeat?.timestamp || lastEntry.timestamp
@@ -118,11 +168,11 @@ function createWindow(): void {
     },
   })
 
-  // Load the app
+  // Load either dev server or built index
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"))
+    mainWindow.loadFile(path.join(__dirname, "../dist-react/index.html"))
   }
 
   mainWindow.on("close", (event) => {
@@ -132,6 +182,7 @@ function createWindow(): void {
     }
   })
 
+  // F12 DevTools shortcut
   mainWindow.webContents.on("before-input-event", (_, input) => {
     if (input.key === "F12" && input.type === "keyDown") {
       mainWindow?.webContents.toggleDevTools()
@@ -139,92 +190,77 @@ function createWindow(): void {
   })
 
   mainWindow.on("ready-to-show", () => {
-    // Hide on startup when launched via login item (auto-start)
     const openedAtLogin = app.isPackaged
       ? app.getLoginItemSettings().wasOpenedAtLogin
       : false
+
     if (!openedAtLogin) {
       mainWindow?.show()
     }
   })
 }
 
-// Single instance lock
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
-  app.quit()
-} else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-    }
-  })
+// ─────────────────────────────────────────────────────────────
+// App Lifecycle
+// ─────────────────────────────────────────────────────────────
+app.whenReady().then(() => {
+  Menu.setApplicationMenu(null) // Remove default menu bar
 
-  app.whenReady().then(() => {
-    // Remove default menu bar
-    Menu.setApplicationMenu(null)
+  // Core initialization
+  initDatabase()
+  handleStartupRecovery()
 
-    // Initialize
-    initDatabase()
-    handleStartupRecovery()
+  // Auto-start (login item) setting
+  const startupSettings = getAllSettings()
+  syncLoginItem(startupSettings.autoStart !== "false")
 
-    // Sync login item setting (auto-start)
-    const startupSettings = getAllSettings()
-    syncLoginItem(startupSettings.autoStart !== "false")
+  // Boot login entry
+  insertEntry("LOGIN", "auto", "via boot")
 
-    // Log boot LOGIN
-    insertEntry("LOGIN", "auto", "via boot")
+  // Start services
+  startHeartbeat(60)
+  startMonitoring(notifyRenderer, 15)
 
-    // Start heartbeat
-    startHeartbeat(60)
+  // Register IPC handlers
+  registerIpcHandlers(notifyRenderer, () => mainWindow)
 
-    // Register IPC — pass notifyRenderer + window getter
-    registerIpcHandlers(notifyRenderer, () => mainWindow)
+  // Create main window
+  createWindow()
 
-    // Create window
-    createWindow()
+  // Register global hotkey from settings
+  const settings = getAllSettings()
+  registerHotkey(
+    () => mainWindow,
+    settings.hotkeyCombo || "Alt+Space",
+    (settings.hotkeyMode || "press") as "press" | "push",
+    settings.hotkeyEnabled !== "false"
+  )
 
-    // Register global hotkey from stored settings
-    const raw = getAllSettings()
-    registerHotkey(
-      () => mainWindow,
-      raw.hotkeyCombo || "Alt+Space",
-      (raw.hotkeyMode || "press") as "press" | "push",
-      raw.hotkeyEnabled !== "false"
-    )
+  // Tray
+  createTray(mainWindow, handlePunchIn, handlePunchOut, handleQuit)
+  refreshTray()
 
-    // Create tray
-    createTray(mainWindow, handlePunchIn, handlePunchOut, handleQuit)
-    refreshTray()
+  // Daily background sync
+  scheduleDailySync(notifyRenderer)
 
-    // Start monitoring power events
-    startMonitoring(notifyRenderer, 15)
+  // Auto-updater (only in packaged builds)
+  if (app.isPackaged) {
+    initAutoUpdater(() => mainWindow)
+    setTimeout(() => checkForUpdates(), 5000)
+  }
+})
 
-    // Start daily background sync (leaves + portal cache)
-    // notifyRenderer is passed so the renderer reloads day_marks after leave sync
-    scheduleDailySync(notifyRenderer)
+app.on("window-all-closed", () => {
+  // App stays alive in tray — do not quit
+})
 
-    // Auto-updater: init after window is created, check 5s after boot
-    if (app.isPackaged) {
-      initAutoUpdater(() => mainWindow)
-      setTimeout(() => checkForUpdates(), 5000)
-    }
-  })
+app.on("before-quit", () => {
+  isQuitting = true
+  unregisterHotkey()
+})
 
-  app.on("window-all-closed", () => {
-    // Don't quit on window close — we live in the tray
-  })
-
-  app.on("before-quit", () => {
-    isQuitting = true
-    unregisterHotkey()
-  })
-
-  app.on("activate", () => {
-    if (mainWindow) {
-      mainWindow.show()
-    }
-  })
-}
+app.on("activate", () => {
+  if (mainWindow) {
+    mainWindow.show()
+  }
+})
