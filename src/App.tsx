@@ -148,7 +148,7 @@ function NarrowLayout() {
           <TotalCard
             totalSeconds={status.totalSecondsToday}
             workingSeconds={
-              status.workWindow ? status.workingSecondsToday : undefined
+              status.workMode !== "all" ? status.workingSecondsToday : undefined
             }
             isIn={status.isIn}
           />
@@ -165,6 +165,7 @@ function NarrowLayout() {
           entries={events}
           lastUpdated={lastUpdated}
           workWindow={status.workWindow}
+          workMode={status.workMode}
           onDelete={deleteEntry}
           onEdit={editEntry}
         />
@@ -189,7 +190,7 @@ interface WideLayoutProps {
     date: string,
     startTime: string,
     endTime: string,
-    source?: "nightshift" | "manual"
+    source?: "nightshift" | "manual" | "disabled"
   ) => void
   onDeleteWorkWindow: (date: string) => void
   nightShift: import("@/lib/types").NightShiftConfig
@@ -467,7 +468,7 @@ interface AppInnerProps {
     date: string,
     startTime: string,
     endTime: string,
-    source?: "nightshift" | "manual"
+    source?: "nightshift" | "manual" | "disabled"
   ) => void
   onDeleteWorkWindow: (date: string) => void
   nightShift: import("@/lib/types").NightShiftConfig

@@ -11,11 +11,12 @@ interface EventLogProps {
   entries: PunchEntry[]
   lastUpdated: Date
   workWindow?: WorkWindow | null
+  workMode?: "holiday" | "all" | "window"
   onDelete: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLog({ entries, lastUpdated, workWindow, onDelete, onEdit }: EventLogProps) {
+export function EventLog({ entries, lastUpdated, workWindow, workMode, onDelete, onEdit }: EventLogProps) {
   const [expanded, setExpanded] = useState(false)
 
   const latestPair = entries.slice(0, 2)
@@ -35,7 +36,7 @@ export function EventLog({ entries, lastUpdated, workWindow, onDelete, onEdit }:
           <div className="space-y-1.5">
             {/* Latest pair - always visible */}
             {!expanded && latestPair.map((entry) => (
-              <EventLogItem key={entry.id} entry={entry} workWindow={workWindow} onDelete={onDelete} onEdit={onEdit} />
+              <EventLogItem key={entry.id} entry={entry} workWindow={workWindow} workMode={workMode} onDelete={onDelete} onEdit={onEdit} />
             ))}
 
             {/* Older entries - collapsible */}
@@ -48,6 +49,7 @@ export function EventLog({ entries, lastUpdated, workWindow, onDelete, onEdit }:
                         key={entry.id}
                         entry={entry}
                         workWindow={workWindow}
+                        workMode={workMode}
                         onDelete={onDelete}
                         onEdit={onEdit}
                       />

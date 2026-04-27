@@ -29,7 +29,7 @@ export function useWorkWindows() {
       }
       setWindows((prev) => {
         const next = new Map(prev)
-        next.set(date, { date, start_time: startTime, end_time: endTime, source })
+        next.set(date, { date, start_time: startTime || null, end_time: endTime || null, source })
         return next
       })
     },

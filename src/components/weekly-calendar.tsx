@@ -28,7 +28,7 @@ interface WeeklyCalendarProps {
   dayMarks?: Map<string, DayMark>
   onSetMark?: (date: string, mark: DayMark | null) => void
   workWindows?: Map<string, DayWorkWindow>
-  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual") => void
+  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual" | "disabled") => void
   onDeleteWorkWindow?: (date: string) => void
   nightShift?: NightShiftConfig
 }

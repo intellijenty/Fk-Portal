@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 // ── Key utilities ─────────────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ export function HotkeyRecorder({
           type="button"
           onClick={startRecording}
           className={cn(
-            "flex min-w-[120px] items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors",
+            "flex min-w-24 items-center gap-1.5 rounded-lg border px-3 py-2 transition-colors",
             recording
               ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
               : "border-border/60 bg-muted/30 hover:border-border hover:bg-muted/50"
@@ -198,28 +199,32 @@ export function HotkeyRecorder({
         </button>
 
         {/* Reset to default */}
-        <button
-          type="button"
-          onClick={() => {
-            onChange(defaultValue)
-            setError(null)
-          }}
-          className="rounded-md p-1.5 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
-          title="Reset to default"
-        >
-          <svg
-            className="size-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-        </button>
+        <Tooltip>
+          <TooltipTrigger>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(defaultValue)
+                setError(null)
+              }}
+              className="rounded-md p-1.5 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+            >
+              <svg
+                className="size-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Reset to default</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* ── Recording popup ── */}
@@ -230,9 +235,7 @@ export function HotkeyRecorder({
             <p className="text-[11px] text-muted-foreground">
               Press{" "}
               <span className="font-semibold text-foreground/70">Backspace</span>{" "}
-              to clear &nbsp;·&nbsp;{" "}
-              <span className="font-semibold text-foreground/70">Esc</span>{" "}
-              to cancel
+              to clear &nbsp;
             </p>
           </div>
 

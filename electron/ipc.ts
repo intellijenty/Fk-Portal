@@ -11,7 +11,7 @@ import {
   deleteEntry,
   calculateTotalSecondsForDate,
   calculateWorkingSecondsForDate,
-  resolveWorkWindow,
+  resolveEffectiveMode,
   getEventCountForDate,
   getWeekSummaries,
   getAllDayMarks,
@@ -142,7 +142,8 @@ export function registerIpcHandlers(
     const totalSecondsToday = calculateTotalSecondsForDate(targetDate)
     const workingSecondsToday = calculateWorkingSecondsForDate(targetDate)
     const eventCount = getEventCountForDate(targetDate)
-    const workWindow = resolveWorkWindow(targetDate)
+    const mode = resolveEffectiveMode(targetDate)
+    const workWindow = mode.type === "window" ? { start: mode.start, end: mode.end } : null
 
     return {
       isIn,
@@ -151,6 +152,7 @@ export function registerIpcHandlers(
       workingSecondsToday,
       eventCount,
       workWindow,
+      workMode: mode.type,
     }
   })
 
@@ -311,9 +313,9 @@ export function registerIpcHandlers(
       date: string,
       startTime: string,
       endTime: string,
-      source: "default" | "nightshift" | "manual"
+      source: "default" | "nightshift" | "manual" | "disabled"
     ) => {
-      setWorkWindow(date, startTime, endTime, source)
+      setWorkWindow(date, startTime || null, endTime || null, source)
       onDataChange()
     }
   )

@@ -81,8 +81,13 @@ function getSourceTooltip(source: string, trigger: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function isEntryInWorkWindow(entry: PunchEntry, workWindow?: WorkWindow | null): boolean {
-  if (!workWindow) return true
+function isEntryInWorkWindow(
+  entry: PunchEntry,
+  workWindow: WorkWindow | null | undefined,
+  workMode: "holiday" | "all" | "window"
+): boolean {
+  if (workMode === "holiday") return false
+  if (workMode === "all" || !workWindow) return true
   const d = new Date(entry.timestamp)
   const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
   if (workWindow.start <= workWindow.end) {
@@ -95,11 +100,12 @@ function isEntryInWorkWindow(entry: PunchEntry, workWindow?: WorkWindow | null):
 interface EventLogItemProps {
   entry: PunchEntry
   workWindow?: WorkWindow | null
+  workMode?: "holiday" | "all" | "window"
   onDelete: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLogItem({ entry, workWindow, onDelete, onEdit }: EventLogItemProps) {
+export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, onEdit }: EventLogItemProps) {
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTime, setEditTime] = useState("")
@@ -109,7 +115,7 @@ export function EventLogItem({ entry, workWindow, onDelete, onEdit }: EventLogIt
   const isIn = entry.type === "LOGIN"
   const isEdited = !!entry.modified_at
   const SourceIcon = getSourceIcon(entry.source)
-  const outsideWindow = !isEntryInWorkWindow(entry, workWindow)
+  const outsideWindow = !isEntryInWorkWindow(entry, workWindow, workMode)
 
   function startEdit() {
     setEditTime(timestampToTimeInput(entry.timestamp))

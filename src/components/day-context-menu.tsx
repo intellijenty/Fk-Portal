@@ -98,7 +98,7 @@ export interface DayContextMenuProps {
     date: string,
     startTime: string,
     endTime: string,
-    source?: "nightshift" | "manual"
+    source?: "nightshift" | "manual" | "disabled"
   ) => void
   onDeleteWorkWindow?: (date: string) => void
   nightShift?: NightShiftConfig
@@ -147,6 +147,8 @@ export function DayContextMenu({
   function handleWorkWindowChange(value: string) {
     if (value === "default") {
       onDeleteWorkWindow?.(date)
+    } else if (value === "disabled") {
+      onSetWorkWindow?.(date, "", "", "disabled")
     } else if (value === "nightshift" && nightShift) {
       onSetWorkWindow?.(date, nightShift.start, nightShift.end, "nightshift")
     } else if (value === "manual") {
@@ -295,7 +297,9 @@ export function DayContextMenu({
                   Work Window
                   {workWindow && (
                     <span className="ml-auto text-[10px] text-muted-foreground/50">
-                      {workWindow.start_time}–{workWindow.end_time}
+                      {workWindow.source === "disabled"
+                        ? "all entries"
+                        : `${workWindow.start_time}–${workWindow.end_time}`}
                     </span>
                   )}
                 </ContextMenuSubTrigger>
@@ -316,12 +320,17 @@ export function DayContextMenu({
                         >
                           Night Shift
                         </ContextMenuRadioItem>
-                        <ContextMenuSeparator />
                       </>
                     )}
 
                     <ContextMenuRadioItem value="manual" className="gap-2.5">
                       Custom
+                    </ContextMenuRadioItem>
+
+                    <ContextMenuSeparator />
+
+                    <ContextMenuRadioItem value="disabled" className="gap-2.5">
+                      Disable this Day
                     </ContextMenuRadioItem>
                   </ContextMenuRadioGroup>
                 </ContextMenuSubContent>

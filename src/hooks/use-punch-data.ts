@@ -79,6 +79,7 @@ function getMockStatus(): PunchStatus {
     workingSecondsToday: Math.max(0, Math.floor(totalSeconds)),
     eventCount: todayEntries.length,
     workWindow: null,
+    workMode: "all" as const,
   }
 }
 
@@ -182,11 +183,14 @@ export function usePunchData(date?: string) {
     timerRef.current = setInterval(() => {
       setStatus((prev) => {
         if (!prev || !prev.isIn) return prev
-        const inWindow = isTimeInWorkWindow(new Date(), prev.workWindow)
+        const workIncrement =
+          prev.workMode === "holiday" ? 0 :
+          prev.workMode === "all" ? 1 :
+          isTimeInWorkWindow(new Date(), prev.workWindow) ? 1 : 0
         return {
           ...prev,
           totalSecondsToday: prev.totalSecondsToday + 1,
-          workingSecondsToday: prev.workingSecondsToday + (inWindow ? 1 : 0),
+          workingSecondsToday: prev.workingSecondsToday + workIncrement,
         }
       })
     }, 1000)

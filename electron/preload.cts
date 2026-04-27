@@ -64,7 +64,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     date: string,
     startTime: string,
     endTime: string,
-    source: "default" | "nightshift" | "manual"
+    source: "default" | "nightshift" | "manual" | "disabled"
   ) => ipcRenderer.invoke("set-work-window", date, startTime, endTime, source),
   deleteWorkWindow: (date: string) =>
     ipcRenderer.invoke("delete-work-window", date),

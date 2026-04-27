@@ -92,11 +92,30 @@ export function initDatabase(): void {
 
     CREATE TABLE IF NOT EXISTS day_work_windows (
       date TEXT PRIMARY KEY,
-      start_time TEXT NOT NULL,
-      end_time TEXT NOT NULL,
-      source TEXT NOT NULL CHECK(source IN ('default', 'nightshift', 'manual'))
+      start_time TEXT,
+      end_time TEXT,
+      source TEXT NOT NULL CHECK(source IN ('default', 'nightshift', 'manual', 'disabled'))
     );
   `)
+
+  // Migration: upgrade old day_work_windows schema (NOT NULL + missing 'disabled')
+  {
+    const colInfo = db.prepare("PRAGMA table_info(day_work_windows)").all() as { name: string; notnull: number }[]
+    const startCol = colInfo.find(c => c.name === 'start_time')
+    if (startCol?.notnull === 1) {
+      db.exec(`
+        CREATE TABLE day_work_windows_v2 (
+          date TEXT PRIMARY KEY,
+          start_time TEXT,
+          end_time TEXT,
+          source TEXT NOT NULL CHECK(source IN ('default','nightshift','manual','disabled'))
+        );
+        INSERT INTO day_work_windows_v2 SELECT * FROM day_work_windows;
+        DROP TABLE day_work_windows;
+        ALTER TABLE day_work_windows_v2 RENAME TO day_work_windows;
+      `)
+    }
+  }
 
   // Insert default settings if not exist
   const defaults: Record<string, string> = {
@@ -321,9 +340,9 @@ export function getAllSettings(): Record<string, string> {
 
 export interface DBWorkWindow {
   date: string
-  start_time: string // "HH:MM"
-  end_time: string   // "HH:MM"
-  source: "default" | "nightshift" | "manual"
+  start_time: string | null
+  end_time: string | null
+  source: "default" | "nightshift" | "manual" | "disabled"
 }
 
 export function getWorkWindow(date: string): DBWorkWindow | undefined {
@@ -334,13 +353,13 @@ export function getWorkWindow(date: string): DBWorkWindow | undefined {
 
 export function setWorkWindow(
   date: string,
-  startTime: string,
-  endTime: string,
-  source: "default" | "nightshift" | "manual"
+  startTime: string | null,
+  endTime: string | null,
+  source: "default" | "nightshift" | "manual" | "disabled"
 ): void {
   db.prepare(
     "INSERT OR REPLACE INTO day_work_windows (date, start_time, end_time, source) VALUES (?, ?, ?, ?)"
-  ).run(date, startTime, endTime, source)
+  ).run(date, startTime || null, endTime || null, source)
 }
 
 export function deleteWorkWindow(date: string): void {
@@ -353,20 +372,79 @@ export function getAllWorkWindows(): DBWorkWindow[] {
     .all() as DBWorkWindow[]
 }
 
+// ── Effective day mode ────────────────────────────────────────────────────────
+
+type DayMode =
+  | { type: "holiday" }                              // count 0 seconds
+  | { type: "all" }                                  // count all entries
+  | { type: "window"; start: string; end: string }   // clamp to window
+
+function isWeekend(date: string): boolean {
+  const dow = new Date(date + "T00:00:00").getDay()
+  return dow === 0 || dow === 6
+}
+
+function getDayMark(date: string): string | null {
+  const row = db
+    .prepare("SELECT mark FROM day_marks WHERE date = ?")
+    .get(date) as { mark: string } | undefined
+  return row?.mark ?? null
+}
+
 /**
- * Resolve the effective work window for a date.
- * Priority: stored per-day window → current default settings → null (no window).
+ * Resolve the effective day mode for time calculation.
+ *
+ * Priority:
+ *   1. Weekend → holiday (count 0)
+ *   2. Leave mark (fl/hl) → holiday (count 0)
+ *   3. Stored 'disabled' row → all (count everything)
+ *   4. Stored 'nightshift'/'manual' row → window
+ *   5. Stored 'default' row — only if global boundary still enabled
+ *   6. Global boundary setting → window
+ *   7. Fallback → all
+ */
+export function resolveEffectiveMode(date: string): DayMode {
+  if (isWeekend(date)) return { type: "holiday" }
+
+  const mark = getDayMark(date)
+  if (mark === "fl" || mark === "hl") return { type: "holiday" }
+
+  const stored = getWorkWindow(date)
+  if (stored) {
+    if (stored.source === "disabled") return { type: "all" }
+    if (stored.source === "nightshift" || stored.source === "manual") {
+      if (stored.start_time && stored.end_time) {
+        return { type: "window", start: stored.start_time, end: stored.end_time }
+      }
+      // Corrupted row (missing times) — fall through to global/fallback
+    }
+    // source === 'default': only valid if global boundary still enabled
+    if (stored.source === "default") {
+      const globalStart = getSetting("workBoundaryStart")
+      const globalEnd = getSetting("workBoundaryEnd")
+      if (globalStart && globalEnd && stored.start_time && stored.end_time) {
+        return { type: "window", start: stored.start_time, end: stored.end_time }
+      }
+      // Global disabled or corrupted row — ignore stale snapshot, fall through
+    }
+  }
+
+  const start = getSetting("workBoundaryStart")
+  const end = getSetting("workBoundaryEnd")
+  if (start && end) return { type: "window", start, end }
+
+  return { type: "all" }
+}
+
+/**
+ * Resolve work window { start, end } for a date, or null if no window applies.
+ * Used by IPC get-status to populate PunchStatus.workWindow for the renderer.
  */
 export function resolveWorkWindow(
   date: string
 ): { start: string; end: string } | null {
-  const stored = getWorkWindow(date)
-  if (stored) return { start: stored.start_time, end: stored.end_time }
-
-  const start = getSetting("workBoundaryStart")
-  const end = getSetting("workBoundaryEnd")
-  if (start && end) return { start, end }
-
+  const mode = resolveEffectiveMode(date)
+  if (mode.type === "window") return { start: mode.start, end: mode.end }
   return null
 }
 
@@ -386,12 +464,15 @@ export function snapshotWorkWindowIfNeeded(date: string): void {
 }
 
 /**
- * Calculate working seconds for a date, clamping sessions to the work window.
- * If no work window exists, returns the same as calculateTotalSecondsForDate.
+ * Calculate working seconds for a date using the effective day mode.
+ *   holiday → 0
+ *   all     → same as calculateTotalSecondsForDate
+ *   window  → sessions clamped to window ranges
  */
 export function calculateWorkingSecondsForDate(date: string): number {
-  const window = resolveWorkWindow(date)
-  if (!window) return calculateTotalSecondsForDate(date)
+  const mode = resolveEffectiveMode(date)
+  if (mode.type === "holiday") return 0
+  if (mode.type === "all") return calculateTotalSecondsForDate(date)
 
   const entries = db
     .prepare(
@@ -399,7 +480,7 @@ export function calculateWorkingSecondsForDate(date: string): number {
     )
     .all(date) as DBEntry[]
 
-  return sumSessionsWithWindow(entries, window, date)
+  return sumSessionsWithWindow(entries, mode, date)
 }
 
 /**

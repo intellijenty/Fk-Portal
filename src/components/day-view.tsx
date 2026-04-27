@@ -65,7 +65,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
           <StatusCard status={status} />
           <TotalCard
             totalSeconds={status.totalSecondsToday}
-            workingSeconds={status.workWindow ? status.workingSecondsToday : undefined}
+            workingSeconds={status.workMode !== "all" ? status.workingSecondsToday : undefined}
             isIn={status.isIn}
           />
         </div>
@@ -80,6 +80,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
           entries={events}
           lastUpdated={lastUpdated}
           workWindow={status.workWindow}
+          workMode={status.workMode}
           onDelete={deleteEntry}
           onEdit={editEntry}
         />

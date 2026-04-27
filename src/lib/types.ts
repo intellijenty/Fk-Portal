@@ -35,6 +35,7 @@ export interface PunchStatus {
   workingSecondsToday: number
   eventCount: number
   workWindow: WorkWindow | null
+  workMode: "holiday" | "all" | "window"
 }
 
 export interface DailySummary {
@@ -139,12 +140,12 @@ export interface LeaveSyncResult {
 
 // ── Work window types ──
 
-export type WorkWindowSource = "default" | "nightshift" | "manual"
+export type WorkWindowSource = "default" | "nightshift" | "manual" | "disabled"
 
 export interface DayWorkWindow {
   date: string
-  start_time: string
-  end_time: string
+  start_time: string | null
+  end_time: string | null
   source: WorkWindowSource
 }
 
