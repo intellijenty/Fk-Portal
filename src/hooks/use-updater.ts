@@ -16,14 +16,13 @@ export function useUpdater() {
     if (!isElectron) return
 
     const api = window.electronAPI
-    let progressToastId: string | number | undefined
 
     const unsubs = [
       api.onUpdateAvailable((info) => {
         // Dismiss checking toast if a manual check triggered this
         toast.dismiss(CHECK_TOAST_ID)
 
-        progressToastId = toast(`${__APP_VERSION__} → ${info.version}`, {
+        toast(`${__APP_VERSION__} → ${info.version}`, {
           id: PROMPT_TOAST_ID,
           duration: Infinity,
           description: "A new version of Traccia is available. Download and install now?",
@@ -53,7 +52,7 @@ export function useUpdater() {
       }),
 
       api.onUpdateDownloaded((info) => {
-        toast.dismiss(progressToastId)
+        toast.dismiss(PROGRESS_TOAST_ID)
         toast.success(`v${info.version} ready to install`, {
           id: READY_TOAST_ID,
           duration: Infinity,
@@ -67,7 +66,7 @@ export function useUpdater() {
 
       // Silent on background errors — only manual-check errors surface (handled in checkNow)
       api.onUpdateError(() => {
-        toast.dismiss(progressToastId)
+        toast.dismiss(PROGRESS_TOAST_ID)
       }),
     ]
 

@@ -198,7 +198,12 @@ export function PortalSection({
       {/* Error */}
       {error && !portalData?.success && !showSkeleton && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-          {error}
+          {[
+            "net::ERR_NAME_NOT_RESOLVED",
+            "net::ERR_CONNECTION_TIMED_OUT",
+          ].includes(error)
+            ? "Unable to reach HRMS portal. Please check your client connection."
+            : `Error: ${error}`}
         </div>
       )}
 
