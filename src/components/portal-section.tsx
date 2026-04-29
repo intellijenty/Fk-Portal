@@ -11,18 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { usePortalDay } from "@/hooks/use-portal-day"
 import { useWeeklyTarget } from "@/hooks/use-weekly-target"
 import { getLocalDate } from "@/lib/week-utils"
+import { relativeTime } from "@/lib/utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Globe02Icon } from "@hugeicons/core-free-icons"
 import { Card, CardContent } from "./ui/card"
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  })
-}
 
 // Skeleton that mirrors the real portal cards layout
 
@@ -126,7 +118,7 @@ export function PortalSection({
                 {syncing
                   ? "Syncing…"
                   : lastRefreshed
-                    ? `Last updated: ${formatTime(lastRefreshed)}`
+                    ? `Last updated: ${relativeTime(lastRefreshed)}`
                     : "Click to refresh"}
               </TooltipContent>
             </Tooltip>
