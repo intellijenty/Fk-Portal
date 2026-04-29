@@ -37,7 +37,7 @@ import { useNotificationEngine } from "@/hooks/use-notification-engine"
 import { useNotificationSettings } from "@/hooks/use-notification-settings"
 import { useUpdater } from "@/hooks/use-updater"
 import { Toaster } from "@/components/ui/sonner"
-import { cn } from "@/lib/utils"
+import { cn, computeLocalBreakSeconds } from "@/lib/utils"
 import LicenseMonitor from "./components/LicenseMonitor"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
@@ -151,6 +151,7 @@ function NarrowLayout() {
               status.workMode !== "all" ? status.workingSecondsToday : undefined
             }
             isIn={status.isIn}
+            breakSeconds={computeLocalBreakSeconds(events, status.workWindow, status.workMode)}
           />
         </div>
 

@@ -6,6 +6,14 @@ function formatHoursMinutes(totalSeconds: number): string {
   return `${hours}h ${String(minutes).padStart(2, "0")}m`
 }
 
+function formatBreakDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function formatCompletionTime(remainingSeconds: number): string {
   const completionDate = new Date(Date.now() + remainingSeconds * 1000)
   return completionDate.toLocaleTimeString("en-US", {
@@ -20,6 +28,7 @@ interface TotalCardProps {
   workingSeconds?: number
   isIn: boolean
   targetMinutes?: number
+  breakSeconds?: number
 }
 
 export function TotalCard({
@@ -27,6 +36,7 @@ export function TotalCard({
   workingSeconds,
   isIn,
   targetMinutes = 480,
+  breakSeconds = 0,
 }: TotalCardProps) {
   const displaySeconds = workingSeconds ?? totalSeconds
   const targetSeconds = targetMinutes * 60
@@ -39,7 +49,7 @@ export function TotalCard({
 
   return (
     <Card className="border-0 bg-muted/50">
-      <CardContent className="p-5">
+      <CardContent className="p-5 pb-1">
         <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
           Estimated Completion
         </p>
@@ -61,7 +71,7 @@ export function TotalCard({
         </div>
         <div className="mt-3 text-xs text-muted-foreground">
           {completed ? (
-            <span className="text-emerald-400">Target reached!</span>
+            <span className="text-foreground">Target reached!</span>
           ) : (
             <>
               <span className="font-medium text-foreground">
@@ -71,6 +81,18 @@ export function TotalCard({
             </>
           )}
         </div>
+
+        {/* Break time */}
+        {breakSeconds >= 60 && (
+          <div className="mt-3 flex items-center gap-2">
+            <p className="text-xs tracking-wider uppercase opacity-35">
+              Break
+            </p>
+            <span className="font-mono font-semibold tabular-nums text-amber-400/70">
+              {formatBreakDuration(breakSeconds)}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

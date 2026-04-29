@@ -5,6 +5,7 @@ import { EventLog } from "@/components/event-log"
 import { PortalSection } from "@/components/portal-section"
 import { usePunchData } from "@/hooks/use-punch-data"
 import { formatDateDisplay } from "@/lib/week-utils"
+import { computeLocalBreakSeconds } from "@/lib/utils"
 
 interface DayViewProps {
   date: string
@@ -67,6 +68,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
             totalSeconds={status.totalSecondsToday}
             workingSeconds={status.workMode !== "all" ? status.workingSecondsToday : undefined}
             isIn={status.isIn}
+            breakSeconds={computeLocalBreakSeconds(events, status.workWindow, status.workMode)}
           />
         </div>
 

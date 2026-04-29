@@ -22,11 +22,19 @@ function formatCompletionTime(remainingMinutes: number): string {
   })
 }
 
+function formatBreakDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 interface PortalTotalCardProps {
   totalMinutes: number
   isIn: boolean
   targetMinutes?: number
   adjustmentLabel?: string | null
+  breakMinutes?: number
 }
 
 export function PortalTotalCard({
@@ -34,6 +42,7 @@ export function PortalTotalCard({
   isIn,
   targetMinutes = 480,
   adjustmentLabel = null,
+  breakMinutes = 0,
 }: PortalTotalCardProps) {
   const remainingMinutes = Math.max(0, targetMinutes - totalMinutes)
   const percentage = Math.min(
@@ -45,7 +54,7 @@ export function PortalTotalCard({
 
   return (
     <Card className="border-0 bg-muted/50">
-      <CardContent className="p-5">
+      <CardContent className="p-5 pb-2">
         {/* Label row */}
         <div className="flex items-center gap-1.5">
           <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
@@ -90,7 +99,7 @@ export function PortalTotalCard({
         {/* Footer */}
         <div className="mt-3 text-xs text-muted-foreground">
           {completed ? (
-            <span className="text-blue-400">Target reached!</span>
+            <span className="text-foreground">Target reached!</span>
           ) : (
             <>
               <span className="font-medium text-foreground">
@@ -100,6 +109,18 @@ export function PortalTotalCard({
             </>
           )}
         </div>
+
+        {/* Break time */}
+        {breakMinutes > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <p className="text-xs tracking-wider uppercase opacity-35">
+              Break
+            </p>
+            <span className="font-mono text-xs px-1 font-semibold tabular-nums text-amber-400/70">
+              {formatBreakDuration(breakMinutes)}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

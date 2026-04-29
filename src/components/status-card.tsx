@@ -36,7 +36,7 @@ export function StatusCard({ status }: StatusCardProps) {
           : "bg-muted/50 text-muted-foreground"
       }`}
     >
-      <CardContent className="p-5">
+      <CardContent className="p-5 pb-2">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider opacity-80">
           <span
             className={`inline-block h-2 w-2 rounded-full ${

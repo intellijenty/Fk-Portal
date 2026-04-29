@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { usePortalDay } from "@/hooks/use-portal-day"
 import { useWeeklyTarget } from "@/hooks/use-weekly-target"
 import { getLocalDate } from "@/lib/week-utils"
-import { relativeTime } from "@/lib/utils"
+import { relativeTime, computePortalBreakMinutes } from "@/lib/utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Globe02Icon } from "@hugeicons/core-free-icons"
 import { Card, CardContent } from "./ui/card"
@@ -213,6 +213,7 @@ export function PortalSection({
               isIn={portalData.isCurrentlyIn}
               targetMinutes={isToday ? adjustedTargetMinutes : 480}
               adjustmentLabel={isToday ? targetTooltip : null}
+              breakMinutes={computePortalBreakMinutes(portalData.entries)}
             />
           </div>
           <PortalLog entries={portalData.entries} />
