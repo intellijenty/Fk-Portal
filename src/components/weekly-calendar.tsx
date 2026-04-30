@@ -132,13 +132,9 @@ export function WeeklyCalendar({
                 }`}
               />
               <span className="text-[10px] tabular-nums opacity-70">
-                {isMP
-                  ? "—"
-                  : isLeave
-                    ? "—"
-                    : summary && summary.totalSeconds > 0
-                      ? formatHM(summary.totalSeconds)
-                      : "—"}
+                {!isMP &&
+                  !isLeave &&
+                    (summary && summary.totalSeconds > 0 ? formatHM(summary.totalSeconds) : "-")}
               </span>
               {isMP && (
                 <span

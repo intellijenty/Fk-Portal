@@ -72,10 +72,12 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
           />
         </div>
 
-        {/* Manual entry — available for any day */}
-        <div className="shrink-0">
-          <ManualEntry date={date} onAddEntry={addEntry} />
-        </div>
+        {/* Manual entry — hidden for future dates */}
+        {date <= new Date().toLocaleDateString("en-CA") && (
+          <div className="shrink-0">
+            <ManualEntry date={date} onAddEntry={addEntry} />
+          </div>
+        )}
 
         {/* Event log */}
         <EventLog

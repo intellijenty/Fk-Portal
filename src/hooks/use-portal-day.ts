@@ -30,17 +30,19 @@ export function usePortalDay(date?: string): UsePortalDayResult {
   const targetDate = date ?? getLocalDate()
   const isToday = targetDate === getLocalDate()
 
-  // Trigger initial load and set up 5-min refresh
+  const isFuture = targetDate > getLocalDate()
+
+  // Trigger initial load and set up 5-min refresh (skip future dates)
   useEffect(() => {
-    if (!store.connected) return
+    if (!store.connected || isFuture) return
     store.refreshDay(targetDate)
-  }, [targetDate, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetDate, store.connected, isFuture]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!store.connected || !isToday) return
+    if (!store.connected || !isToday || isFuture) return
     const id = setInterval(() => store.refreshDay(targetDate), REFRESH_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [targetDate, isToday, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetDate, isToday, store.connected, isFuture]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const entry = store.cache[targetDate]
 

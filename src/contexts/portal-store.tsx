@@ -150,6 +150,9 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
     async (date: string, force = false): Promise<void> => {
       const today = new Date().toLocaleDateString("en-CA")
 
+      // Reject future dates — portal has no data for them
+      if (date > today) return
+
       // Skip if already syncing this date
       if (syncingRef.current.has(date)) return
 
@@ -218,8 +221,9 @@ export function PortalStoreProvider({ children }: { children: React.ReactNode })
     async (dates: string[], force = false): Promise<void> => {
       const today = new Date().toLocaleDateString("en-CA")
 
-      // Filter to dates that actually need fetching
+      // Filter to dates that actually need fetching (exclude future dates)
       const toFetch = dates.filter((d) => {
+        if (d > today) return false
         if (syncingRef.current.has(d)) return false
         if (!force && cacheRef.current[d]?.permanent) return false
         // Skip past dates already in React memory (same reasoning as refreshDay)

@@ -40,20 +40,22 @@ interface UsePortalRangeResult {
 export function usePortalRange(dates: string[]): UsePortalRangeResult {
   const store = usePortalStoreContext()
   const today = getLocalDate()
-  const rangeIncludesToday = dates.includes(today)
+  const validDates = dates.filter((d) => d <= today)
+  const rangeIncludesToday = validDates.includes(today)
   const datesKey = dates.join(",")
+  const validDatesKey = validDates.join(",")
 
-  // Trigger initial load and set up 5-min refresh if range includes today
+  // Trigger initial load and set up 5-min refresh if range includes today (future dates excluded)
   useEffect(() => {
-    if (!store.connected || dates.length === 0) return
-    store.refreshRange(dates)
-  }, [datesKey, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!store.connected || validDates.length === 0) return
+    store.refreshRange(validDates)
+  }, [validDatesKey, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!store.connected || !rangeIncludesToday || dates.length === 0) return
-    const id = setInterval(() => store.refreshRange(dates), REFRESH_INTERVAL_MS)
+    if (!store.connected || !rangeIncludesToday || validDates.length === 0) return
+    const id = setInterval(() => store.refreshRange(validDates), REFRESH_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [datesKey, rangeIncludesToday, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [validDatesKey, rangeIncludesToday, store.connected]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const summaries = useMemo<WeekDaySummary[]>(() => {
     return dates

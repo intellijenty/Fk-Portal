@@ -337,6 +337,11 @@ export function registerIpcHandlers(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<{ data: any | null; fromCache: boolean; permanent: boolean; error?: string }> {
 
+    // Reject future dates — portal API has no data for them
+    if (date > getLocalDate()) {
+      return { data: null, fromCache: false, permanent: false, error: "Future date" }
+    }
+
     // Today's data is NEVER stored in SQLite — always fetch fresh from the API.
     // It lives only in the renderer's in-memory React state.
     if (date === getLocalDate()) {
