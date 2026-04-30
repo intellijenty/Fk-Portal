@@ -140,6 +140,8 @@ export function usePunchData(date?: string) {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const snapshotRef = useRef<{ total: number; working: number; at: number } | null>(null)
+  const workTicksRef = useRef(0)
 
   const refresh = useCallback(async () => {
     try {
@@ -150,9 +152,26 @@ export function usePunchData(date?: string) {
         ])
         setStatus(newStatus)
         setEvents(newEvents)
+        if (newStatus.isIn) {
+          snapshotRef.current = {
+            total: newStatus.totalSecondsToday,
+            working: newStatus.workingSecondsToday,
+            at: Date.now(),
+          }
+          workTicksRef.current = 0
+        }
       } else {
-        setStatus(getMockStatus())
+        const mockStatus = getMockStatus()
+        setStatus(mockStatus)
         setEvents(getMockEntriesByDate(targetDate))
+        if (mockStatus.isIn) {
+          snapshotRef.current = {
+            total: mockStatus.totalSecondsToday,
+            working: mockStatus.workingSecondsToday,
+            at: Date.now(),
+          }
+          workTicksRef.current = 0
+        }
       }
       setLastUpdated(new Date())
     } catch (err) {
@@ -177,20 +196,39 @@ export function usePunchData(date?: string) {
     return unsubscribe
   }, [refresh])
 
+  // Refresh local data on window focus (today only, throttled 60s)
+  useEffect(() => {
+    if (!isToday) return
+    let lastFocusRefresh = 0
+    const THROTTLE_MS = 60_000
+    const handleFocus = () => {
+      const now = Date.now()
+      if (now - lastFocusRefresh < THROTTLE_MS) return
+      lastFocusRefresh = now
+      refresh()
+    }
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
+  }, [isToday, refresh])
+
   // Live timer: only tick when viewing today and punched in
   useEffect(() => {
     if (!isToday || !status?.isIn) return
     timerRef.current = setInterval(() => {
       setStatus((prev) => {
         if (!prev || !prev.isIn) return prev
+        const snap = snapshotRef.current
+        if (!snap) return prev
+        const elapsed = Math.floor((Date.now() - snap.at) / 1000)
         const workIncrement =
           prev.workMode === "holiday" ? 0 :
           prev.workMode === "all" ? 1 :
           isTimeInWorkWindow(new Date(), prev.workWindow) ? 1 : 0
+        workTicksRef.current += workIncrement
         return {
           ...prev,
-          totalSecondsToday: prev.totalSecondsToday + 1,
-          workingSecondsToday: prev.workingSecondsToday + workIncrement,
+          totalSecondsToday: snap.total + elapsed,
+          workingSecondsToday: snap.working + workTicksRef.current,
         }
       })
     }, 1000)
