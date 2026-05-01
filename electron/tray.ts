@@ -9,7 +9,7 @@ let tray: Tray | null = null
 let isIn = false
 
 function getIconPath(status: "in" | "out"): string {
-  const iconName = status === "in" ? "tray-in.png" : "tray-out.png"
+  const iconName = status === "in" ? "icon-green.png" : "icon-red.png"
   // In dev: resources/ is at project root; in prod: it's in app.getAppPath()
   if (process.env.VITE_DEV_SERVER_URL) {
     return path.join(__dirname, "..", "resources", iconName)
