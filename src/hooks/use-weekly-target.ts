@@ -72,11 +72,11 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
 
     let tooltipText: string | null = null
     if (remaining <= 0) {
-      tooltipText = "40h weekly target already reached - enjoy your Friday"
+      tooltipText = "All done for the week."
     } else if (remaining > 480) {
-      tooltipText = `Target extended to ${fmtHM(adjusted)} - need extra today to reach 40h`
+      tooltipText = `Target Extended to ${fmtHM(adjusted)}. Today needs a bit extra to reach weekly target.`
     } else {
-      tooltipText = `Target reduced to ${fmtHM(adjusted)} - today only ${fmtHM(remaining)} needed to hit 40h`
+      tooltipText = `Target Reduced ${adjusted !== remaining ? "to" + fmtHM(adjusted) : ""}. Only ${fmtHM(remaining)} needed to hit weekly target.`
     }
 
     return { adjustedTargetMinutes: adjusted, weeklyComplete, tooltipText, isAdjusted }

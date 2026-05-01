@@ -1,14 +1,22 @@
-import type { WeekDaySummary, DayWorkWindow, NightShiftConfig } from "@/lib/types"
-import type { DayMark } from "@/lib/week-utils"
-import { getDayStatus, getLocalDate, getWeekRange } from "@/lib/week-utils"
 import { DayContextMenu } from "@/components/day-context-menu"
 import {
-  getYearMonth,
-  getMonthRange,
   getMonthLabel,
+  getMonthRange,
   getWeeksOfMonth,
+  getYearMonth,
   shiftMonth,
 } from "@/lib/month-utils"
+import type {
+  DayWorkWindow,
+  NightShiftConfig,
+  WeekDaySummary,
+} from "@/lib/types"
+import type { DayMark } from "@/lib/week-utils"
+import { getDayStatus, getLocalDate, getWeekRange } from "@/lib/week-utils"
+import { ArrowLeftBigIcon, ArrowRightBigIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
+import { Button } from "./ui/button"
 
 const COL_HEADERS = ["M", "T", "W", "T", "F", "S", "S"]
 
@@ -26,7 +34,12 @@ interface MonthlyCalendarProps {
   dayMarks: Map<string, DayMark>
   onSetMark?: (date: string, mark: DayMark | null) => void
   workWindows?: Map<string, DayWorkWindow>
-  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual" | "disabled") => void
+  onSetWorkWindow?: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source?: "nightshift" | "manual" | "disabled"
+  ) => void
   onDeleteWorkWindow?: (date: string) => void
   nightShift?: NightShiftConfig
 }
@@ -54,19 +67,46 @@ export function MonthlyCalendar({
     <div className="space-y-2">
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => onSelectDate(shiftMonth(selectedDate, -1))}
-          className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          ◀
-        </button>
+        {/* Previous Month Navigation */}
+        <Tooltip delayDuration={700}>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs"
+              onClick={() => onSelectDate(shiftMonth(selectedDate, -1))}
+            >
+              <HugeiconsIcon
+                icon={ArrowLeftBigIcon}
+                size={18}
+                className="shrink-0 text-muted-foreground"
+              />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Previous Month</TooltipContent>
+        </Tooltip>
+
+        {/* Current Display Month */}
         <span className="text-xs font-medium">{getMonthLabel(yearMonth)}</span>
-        <button
-          onClick={() => onSelectDate(shiftMonth(selectedDate, 1))}
-          className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          ▶
-        </button>
+
+        {/* Next Month Navigation */}
+        <Tooltip delayDuration={700}>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs"
+              onClick={() => onSelectDate(shiftMonth(selectedDate, 1))}
+            >
+              <HugeiconsIcon
+                icon={ArrowRightBigIcon}
+                size={18}
+                className="shrink-0 text-muted-foreground"
+              />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="">Next Month</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Header row */}
@@ -159,24 +199,14 @@ export function MonthlyCalendar({
                   >
                     {tile}
                   </DayContextMenu>
-                ) : tile
+                ) : (
+                  tile
+                )
               })}
             </div>
           )
         })}
       </div>
-
-      {/* Jump to today */}
-      {getYearMonth(today) !== yearMonth && (
-        <div className="pt-1 text-center">
-          <button
-            onClick={() => onSelectDate(today)}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            Jump to today
-          </button>
-        </div>
-      )}
     </div>
   )
 }

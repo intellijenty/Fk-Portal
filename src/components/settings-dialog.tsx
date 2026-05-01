@@ -744,6 +744,17 @@ export function SettingsDialog() {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TabValue>("general")
 
+  useEffect(() => {
+    const open = () => setOpen(true)
+    const toggle = () => setOpen((v) => !v)
+    window.addEventListener("traccia:open-settings", open)
+    window.addEventListener("traccia:toggle-settings", toggle)
+    return () => {
+      window.removeEventListener("traccia:open-settings", open)
+      window.removeEventListener("traccia:toggle-settings", toggle)
+    }
+  }, [])
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {/* Trigger */}

@@ -64,7 +64,7 @@ export function TotalCard({
           </div>
           <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-emerald-500 transition-all"
+              className="h-full bg-muted-foreground transition-all"
               style={{ width: `${percentage}%` }}
             />
           </div>

@@ -1,6 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { DayContextMenu } from "@/components/day-context-menu"
-import type { WeekDaySummary, DayWorkWindow, NightShiftConfig } from "@/lib/types"
+import type {
+  WeekDaySummary,
+  DayWorkWindow,
+  NightShiftConfig,
+} from "@/lib/types"
 import {
   getDaysOfWeek,
   shiftWeek,
@@ -11,6 +15,10 @@ import {
   getLocalDate,
   type DayMark,
 } from "@/lib/week-utils"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowLeftBigIcon, ArrowRightBigIcon } from "@hugeicons/core-free-icons"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
+import { Kbd } from "./ui/kbd"
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -28,7 +36,12 @@ interface WeeklyCalendarProps {
   dayMarks?: Map<string, DayMark>
   onSetMark?: (date: string, mark: DayMark | null) => void
   workWindows?: Map<string, DayWorkWindow>
-  onSetWorkWindow?: (date: string, startTime: string, endTime: string, source?: "nightshift" | "manual" | "disabled") => void
+  onSetWorkWindow?: (
+    date: string,
+    startTime: string,
+    endTime: string,
+    source?: "nightshift" | "manual" | "disabled"
+  ) => void
   onDeleteWorkWindow?: (date: string) => void
   nightShift?: NightShiftConfig
 }
@@ -61,22 +74,74 @@ export function WeeklyCalendar({
   return (
     <div className="space-y-3">
       {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigateWeek(-1)}
-          className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          ◀
-        </button>
-        <span className="text-xs font-medium text-muted-foreground">
+      <div className="flex items-center justify-center">
+        <span className="flex min-w-3xs items-center justify-between text-xs font-medium text-muted-foreground">
+          {/* Previous Week Navigation */}
+          <Tooltip delayDuration={700}>
+            <TooltipTrigger>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => navigateWeek(-1)}
+              >
+                <HugeiconsIcon
+                  icon={ArrowLeftBigIcon}
+                  size={18}
+                  className="shrink-0 text-muted-foreground"
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="">
+              Previous Week <Kbd>&#8593;</Kbd>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Current Week Dates */}
           {formatWeekLabel(weekRange.start, weekRange.end)}
+
+          {/* Today Navigation */}
+          {!days.includes(today) && (
+            <div className="justify-self-end text-center">
+              <Tooltip delayDuration={700}>
+                <TooltipTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => onSelectDate(today)}
+                  >
+                    today
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Jump to Today <Kbd>T</Kbd>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+
+          {/* Next Week Navigation */}
+          <Tooltip delayDuration={700}>
+            <TooltipTrigger>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => navigateWeek(1)}
+              >
+                <HugeiconsIcon
+                  icon={ArrowRightBigIcon}
+                  size={18}
+                  className="shrink-0 text-muted-foreground"
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="">
+              Next Week <Kbd>&#8595;</Kbd>
+            </TooltipContent>
+          </Tooltip>
         </span>
-        <button
-          onClick={() => navigateWeek(1)}
-          className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          ▶
-        </button>
       </div>
 
       {/* Day cells */}
@@ -88,12 +153,17 @@ export function WeeklyCalendar({
           const summary = summaryMap.get(date)
           const mark = dayMarks?.get(date)
           const autoMP = (summary?.missPunchCount ?? 0) > 0
-          const isMP = mark === "mp" || (autoMP && mark !== "fl" && mark !== "hl")
+          const isMP =
+            mark === "mp" || (autoMP && mark !== "fl" && mark !== "hl")
           const isFL = mark === "fl"
           const isHL = mark === "hl"
           const isLeave = isFL || isHL
           const isMarked = isMP || isLeave
-          const status = isMarked ? "none" : summary ? getDayStatus(summary.totalSeconds) : "none"
+          const status = isMarked
+            ? "none"
+            : summary
+              ? getDayStatus(summary.totalSeconds)
+              : "none"
           const dateNum = new Date(date + "T00:00:00").getDate()
 
           const tile = (
@@ -112,7 +182,7 @@ export function WeeklyCalendar({
                 {DAY_LABELS[i]}
               </span>
               <span
-                className={`text-lg font-semibold leading-none ${
+                className={`text-lg leading-none font-semibold ${
                   isToday && !isSelected ? "text-primary" : ""
                 }`}
               >
@@ -127,14 +197,16 @@ export function WeeklyCalendar({
                       : isHL
                         ? "bg-sky-500/40"
                         : isMP
-                        ? "bg-red-500/30"
-                        : STATUS_COLORS[status]
+                          ? "bg-red-500/30"
+                          : STATUS_COLORS[status]
                 }`}
               />
               <span className="text-[10px] tabular-nums opacity-70">
                 {!isMP &&
                   !isLeave &&
-                    (summary && summary.totalSeconds > 0 ? formatHM(summary.totalSeconds) : "-")}
+                  (summary && summary.totalSeconds > 0
+                    ? formatHM(summary.totalSeconds)
+                    : "-")}
               </span>
               {isMP && (
                 <span
@@ -179,23 +251,11 @@ export function WeeklyCalendar({
             >
               {tile}
             </DayContextMenu>
-          ) : tile
+          ) : (
+            tile
+          )
         })}
       </div>
-
-      {/* Today button */}
-      {!days.includes(today) && (
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs"
-            onClick={() => onSelectDate(today)}
-          >
-            Jump to today
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

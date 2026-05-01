@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
@@ -14,7 +14,12 @@ import { useDayMarks } from "@/hooks/use-day-marks"
 import { useWorkWindows } from "@/hooks/use-work-windows"
 import { useGeneralSettings } from "@/hooks/use-general-settings"
 import { useWeeklyTarget } from "@/hooks/use-weekly-target"
-import { getLocalDate, getWeekRange, getDaysOfWeek } from "@/lib/week-utils"
+import {
+  getLocalDate,
+  getWeekRange,
+  getDaysOfWeek,
+  formatDateDisplay,
+} from "@/lib/week-utils"
 import { getYearMonth, getWeekdaysInMonth } from "@/lib/month-utils"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { MonthlyInsights } from "@/components/monthly-insights"
@@ -39,6 +44,7 @@ import { useUpdater } from "@/hooks/use-updater"
 import { Toaster } from "@/components/ui/sonner"
 import { cn, computeLocalBreakSeconds } from "@/lib/utils"
 import LicenseMonitor from "./components/LicenseMonitor"
+import { Badge } from "./components/ui/badge"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -80,7 +86,18 @@ function AppNotifications() {
 
 // ── Narrow layout: identical to original ──
 
-function NarrowLayout() {
+interface NarrowLayoutProps {
+  selectedDate: string
+  onSelectDate: (date: string) => void
+}
+
+function NarrowLayout({
+  selectedDate,
+  onSelectDate: _onSelectDate,
+}: NarrowLayoutProps) {
+  const today = getLocalDate()
+  const isToday = selectedDate === today
+
   const {
     status,
     events,
@@ -89,7 +106,7 @@ function NarrowLayout() {
     addEntry,
     editEntry,
     deleteEntry,
-  } = usePunchData()
+  } = usePunchData(selectedDate)
 
   if (loading || !status) {
     return (
@@ -101,15 +118,7 @@ function NarrowLayout() {
     )
   }
 
-  // Format: "Wednesday, 15 April"
-  const headerDate = (() => {
-    const d = new Date()
-    const weekday = d.toLocaleDateString("en-US", { weekday: "long" })
-    const day = d.getDate()
-    const month = d.toLocaleDateString("en-US", { month: "short" })
-    const year = d.getFullYear()
-    return `${weekday}, ${day} ${month} ${year}`
-  })()
+  const headerDate = formatDateDisplay(selectedDate)
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -125,15 +134,22 @@ function NarrowLayout() {
             <span className="text-sm font-medium tracking-tight">
               {headerDate}
             </span>
+            {!isToday && (
+              <Badge variant="outline" className="text-muted-foreground">
+                Past data
+              </Badge>
+            )}
           </div>
-          {/* Balance chips — hidden when not connected */}
-          <NarrowBalanceChips />
+          {/* Right: balance chips */}
+          <div className="flex items-center gap-2">
+            <NarrowBalanceChips />
+          </div>
         </div>
       </header>
 
       <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-2 pb-5">
         <div className="shrink-0">
-          <PortalSection />
+          <PortalSection date={selectedDate} />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -151,15 +167,16 @@ function NarrowLayout() {
               status.workMode !== "all" ? status.workingSecondsToday : undefined
             }
             isIn={status.isIn}
-            breakSeconds={computeLocalBreakSeconds(events, status.workWindow, status.workMode)}
+            breakSeconds={computeLocalBreakSeconds(
+              events,
+              status.workWindow,
+              status.workMode
+            )}
           />
         </div>
 
         <div className="shrink-0">
-          <ManualEntry
-            date={new Date().toLocaleDateString("en-CA")}
-            onAddEntry={addEntry}
-          />
+          <ManualEntry date={selectedDate} onAddEntry={addEntry} />
         </div>
 
         <EventLog
@@ -518,7 +535,7 @@ function AppInner({
           nightShift={nightShift}
         />
       ) : (
-        <NarrowLayout />
+        <NarrowLayout selectedDate={selectedDate} onSelectDate={onSelectDate} />
       )}
     </>
   )
@@ -540,11 +557,75 @@ export default function App() {
     end: generalSettings.nightShiftEnd,
   }
 
+  const pendingSettings = useRef(false)
+  const prevIsWide = useRef(isWide)
+
+  useEffect(() => {
+    const wasWide = prevIsWide.current
+    prevIsWide.current = isWide
+    if (!wasWide && isWide && pendingSettings.current) {
+      pendingSettings.current = false
+      window.dispatchEvent(new CustomEvent("traccia:open-settings"))
+    }
+    if (wasWide && !isWide) {
+      setSelectedDate(getLocalDate())
+    }
+  }, [isWide])
+
   useHotkeyBehavior()
 
   useAppShortcuts({
     "toggle-window-size": () => {
       if (isElectron) window.electronAPI.windowToggleSize()
+    },
+    "open-settings": () => {
+      if (!isWide) {
+        pendingSettings.current = true
+        if (isElectron) window.electronAPI.windowToggleSize()
+      } else {
+        window.dispatchEvent(new CustomEvent("traccia:toggle-settings"))
+      }
+    },
+    "day-prev": () => {
+      setSelectedDate((current) => {
+        const d = new Date(current + "T00:00:00")
+        d.setDate(d.getDate() - 1)
+        const next = d.toLocaleDateString("en-CA")
+        if (!isWide) {
+          const today = getLocalDate()
+          if (next < getWeekRange(today).start) return current
+        }
+        return next
+      })
+    },
+    "day-next": () => {
+      setSelectedDate((current) => {
+        const d = new Date(current + "T00:00:00")
+        d.setDate(d.getDate() + 1)
+        const next = d.toLocaleDateString("en-CA")
+        if (!isWide) {
+          const today = getLocalDate()
+          if (next > today) return current
+        }
+        return next
+      })
+    },
+    "go-today": () => setSelectedDate(getLocalDate()),
+    "week-prev": () => {
+      if (!isWide) return
+      setSelectedDate((current) => {
+        const d = new Date(current + "T00:00:00")
+        d.setDate(d.getDate() - 7)
+        return d.toLocaleDateString("en-CA")
+      })
+    },
+    "week-next": () => {
+      if (!isWide) return
+      setSelectedDate((current) => {
+        const d = new Date(current + "T00:00:00")
+        d.setDate(d.getDate() + 7)
+        return d.toLocaleDateString("en-CA")
+      })
     },
   })
 

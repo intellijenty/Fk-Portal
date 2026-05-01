@@ -17,10 +17,12 @@
 
 export type ShortcutId =
   | "toggle-window-size"
-// Add more ids here as the app grows, e.g.:
-// | "punch-in"
-// | "punch-out"
-// | "open-settings"
+  | "open-settings"
+  | "day-prev"
+  | "day-next"
+  | "go-today"
+  | "week-prev"
+  | "week-next"
 
 export interface AppShortcut {
   id: ShortcutId
@@ -44,6 +46,48 @@ export const SHORTCUTS: readonly AppShortcut[] = [
     defaultKey: "f",
     label: "Toggle Window Size",
     description: "Switch between compact narrow view and full window",
+    configurable: false,
+  },
+  {
+    id: "open-settings",
+    defaultKey: "s",
+    label: "Open Settings",
+    description: "Open the settings dialog",
+    configurable: false,
+  },
+  {
+    id: "day-prev",
+    defaultKey: "ArrowLeft",
+    label: "Previous Day",
+    description: "Navigate to the previous day",
+    configurable: false,
+  },
+  {
+    id: "day-next",
+    defaultKey: "ArrowRight",
+    label: "Next Day",
+    description: "Navigate to the next day",
+    configurable: false,
+  },
+  {
+    id: "go-today",
+    defaultKey: "t",
+    label: "Go to Today",
+    description: "Jump to today regardless of current day view",
+    configurable: false,
+  },
+  {
+    id: "week-prev",
+    defaultKey: "ArrowUp",
+    label: "Previous Week",
+    description: "Navigate to the same day in the previous week (wide view only)",
+    configurable: false,
+  },
+  {
+    id: "week-next",
+    defaultKey: "ArrowDown",
+    label: "Next Week",
+    description: "Navigate to the same day in the next week (wide view only)",
     configurable: false,
   },
 ] as const

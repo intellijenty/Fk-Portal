@@ -6,6 +6,7 @@ import { PortalSection } from "@/components/portal-section"
 import { usePunchData } from "@/hooks/use-punch-data"
 import { formatDateDisplay } from "@/lib/week-utils"
 import { computeLocalBreakSeconds } from "@/lib/utils"
+import { Badge } from "./ui/badge"
 
 interface DayViewProps {
   date: string
@@ -37,12 +38,12 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
   return (
     <div className="flex h-full flex-col">
       {showHeader && (
-        <header className="shrink-0 border-b border-border/50 px-5 py-3">
+        <header className="shrink-0 border-b border-border/50 px-5 py-3 flex items-center gap-3">
           <p className="text-sm font-medium">{formatDateDisplay(date)}</p>
           {!isToday && (
-            <p className="text-[10px] text-muted-foreground/60">
-              Historical data
-            </p>
+            <Badge variant="outline" className="text-muted-foreground" >
+              Past data
+            </Badge>
           )}
         </header>
       )}
