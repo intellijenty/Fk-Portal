@@ -23,6 +23,7 @@ export type ShortcutId =
   | "go-today"
   | "week-prev"
   | "week-next"
+  | "close-window"
 
 export interface AppShortcut {
   id: ShortcutId
@@ -88,6 +89,13 @@ export const SHORTCUTS: readonly AppShortcut[] = [
     defaultKey: "ArrowDown",
     label: "Next Week",
     description: "Navigate to the same day in the next week (wide view only)",
+    configurable: false,
+  },
+  {
+    id: "close-window",
+    defaultKey: "Escape",
+    label: "Close Window",
+    description: "Hide the app window (or close the topmost dialog first)",
     configurable: false,
   },
 ] as const

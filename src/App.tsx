@@ -611,6 +611,10 @@ export default function App() {
       })
     },
     "go-today": () => setSelectedDate(getLocalDate()),
+    "close-window": () => {
+      if (document.querySelector('[role="dialog"]')) return
+      if (isElectron) window.electronAPI.windowHide()
+    },
     "week-prev": () => {
       if (!isWide) return
       setSelectedDate((current) => {
