@@ -48,43 +48,70 @@ export function computeWeeklyBalance(
   summaries: { date: string; totalSeconds: number; missPunchCount: number }[],
   today: string,
   dayMarks: Map<string, DayMark>
-): { balance: number; effectiveTarget: number; totalWorked: number; workingDays: number; mpDays: number; leaveDays: number } {
+): {
+  balance: number
+  effectiveTarget: number
+  totalWorked: number
+  workingDays: number
+  mpDays: number
+  leaveDays: number
+} {
   let workingDays = 0
+  let pastWorkingDays = 0 // excludes today — used for balance target
   let totalWorked = 0
+  let workedPast = 0 // excludes today — used for balance only
   let mpDays = 0
   let leaveDays = 0
 
   const summaryMap = new Map(summaries.map((s) => [s.date, s]))
 
   for (const date of weekDays) {
-    if (date >= today) continue // exclude today and future
     const dow = new Date(date + "T00:00:00").getDay()
     if (dow < 1 || dow > 5) continue // skip weekends
 
-    const summary = summaryMap.get(date)
     const mark = dayMarks.get(date)
+    const isFuture = date > today
+    const isToday = date === today
+
+    if (isFuture) {
+      // Future day: only affects effectiveTarget, no worked credit yet
+      if (mark === "mp") mpDays++
+      else {
+        workingDays++
+        if (mark === "fl" || mark === "hl") leaveDays++
+      }
+      continue
+    }
+
+    // Past or today: counts toward effectiveTarget and totalWorked
+    const summary = summaryMap.get(date)
     const autoMP = (summary?.missPunchCount ?? 0) > 0
     const portalSecs = summary?.totalSeconds || 0
 
     if (mark === "fl") {
-      leaveDays++
-      workingDays++
+      leaveDays++; workingDays++
+      if (!isToday) pastWorkingDays++
       totalWorked += 8 * 3600
+      if (!isToday) workedPast += 8 * 3600
     } else if (mark === "hl") {
-      leaveDays++
-      workingDays++
+      leaveDays++; workingDays++
+      if (!isToday) pastWorkingDays++
       totalWorked += portalSecs + 4 * 3600
+      if (!isToday) workedPast += portalSecs + 4 * 3600
     } else if (mark === "mp" || autoMP) {
       mpDays++
     } else {
       workingDays++
+      if (!isToday) pastWorkingDays++
       totalWorked += portalSecs
+      if (!isToday) workedPast += portalSecs
     }
   }
 
   const effectiveTarget = workingDays * 8 * 3600
+  const pastTarget = pastWorkingDays * 8 * 3600
   return {
-    balance: totalWorked - effectiveTarget,
+    balance: workedPast - pastTarget,
     effectiveTarget,
     totalWorked,
     workingDays,

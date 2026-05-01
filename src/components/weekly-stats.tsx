@@ -245,7 +245,7 @@ export function WeeklyStats({
                 }}
               />
               <ChartTooltip
-                cursor={{ fill: "rgba(100,116,139,0.06)" }}
+                cursor={false}
                 isAnimationActive={true}
                 animationDuration={300}
                 animationEasing="ease"
@@ -255,7 +255,7 @@ export function WeeklyStats({
                   const d = payload[0].payload as (typeof chartData)[0]
                   if (d.isFuture) return null
                   return (
-                    <div className="min-w-30 rounded-lg border border-border/40 bg-background/95 px-3 py-2.5 text-xs shadow-lg backdrop-blur-sm">
+                    <div className="dark relative min-w-30 overflow-hidden rounded-lg px-3 py-2.5 text-xs shadow-lg ring-1 ring-foreground/5 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-background/90 before:backdrop-blur-2xl before:backdrop-saturate-150">
                       <p className="font-semibold text-foreground">{d.label}</p>
                       {d.isMP ? (
                         <p className="mt-1 font-medium text-red-400">
@@ -349,14 +349,16 @@ export function WeeklyStats({
                       <p
                         className={cn(
                           "mt-1 font-mono text-[10px] font-semibold tabular-nums",
-                          d.diff >= 0
-                            ? "text-emerald-400"
-                            : d.diff > -3600
-                              ? "text-amber-400"
-                              : "text-red-400"
+                          d.diff == 0
+                            ? "text-primary-foreground"
+                            : d.diff > 0
+                              ? "text-emerald-400"
+                              : d.diff > -3600
+                                ? "text-amber-400"
+                                : "text-red-400"
                         )}
                       >
-                        {formatSignedHM(d.diff)}
+                        {d.diff == 0 ? "0m" : formatSignedHM(d.diff)}
                       </p>
                     ) : (
                       <p className="mt-1 text-[10px] text-transparent select-none">
