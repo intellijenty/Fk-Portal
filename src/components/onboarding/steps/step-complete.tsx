@@ -5,9 +5,11 @@ import {
   Clock01Icon,
   Notification01Icon,
   KeyboardIcon,
+  LinkSquare02Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { Button } from "@/components/ui/button"
 
 interface StepCompleteProps {
   portalConnected: boolean
@@ -94,6 +96,30 @@ export function StepComplete({
             <Kbd>?</Kbd>
           </KbdGroup>{" "}
           anytime to view the list of keyboard shortcuts or open app manual.
+        </p>
+        {/* user manual reference */}
+        <p>
+          Refer to the
+          <Button
+            variant={"link"}
+            size={"xs"}
+            className="text-muted-foreground"
+            onClick={() => {
+              const url = "https://traccia.notion.site/manual"
+              if (
+                typeof window !== "undefined" &&
+                window.electronAPI?.openExternal
+              ) {
+                window.electronAPI.openExternal(url)
+              } else {
+                window.open(url, "_blank")
+              }
+            }}
+          >
+            <HugeiconsIcon icon={LinkSquare02Icon} size={13} className="mr-1" />
+            App Manual
+          </Button>
+          for detailed guides on using Traccia (Recommended).
         </p>
       </div>
 
