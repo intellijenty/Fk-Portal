@@ -72,7 +72,7 @@ export function WeeklyCalendar({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tour="weekly-calendar">
       {/* Navigation */}
       <div className="flex items-center justify-center">
         <span className="flex min-w-3xs items-center justify-between text-xs font-medium text-muted-foreground">
@@ -145,7 +145,7 @@ export function WeeklyCalendar({
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1" data-tour="day-marks">
         {days.map((date, i) => {
           const isSelected = date === selectedDate
           const isToday = date === today

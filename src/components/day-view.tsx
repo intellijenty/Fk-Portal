@@ -50,12 +50,12 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
 
       <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-3 pb-5">
         {/* Portal */}
-        <div className="shrink-0">
+        <div className="shrink-0" data-tour="portal-section">
           <PortalSection date={date} variant="wide" />
         </div>
 
         {/* Local divider */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2" data-tour="local-section">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Local
           </h2>
@@ -75,7 +75,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
 
         {/* Manual entry — hidden for future dates */}
         {date <= new Date().toLocaleDateString("en-CA") && (
-          <div className="shrink-0">
+          <div className="shrink-0" data-tour="manual-entry">
             <ManualEntry date={date} onAddEntry={addEntry} />
           </div>
         )}

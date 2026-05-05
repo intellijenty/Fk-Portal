@@ -145,6 +145,9 @@ export function initDatabase(): void {
     nightShiftEnabled: "false",
     nightShiftStart: "22:00",
     nightShiftEnd: "06:00",
+    // Onboarding
+    onboardingCompleted: "false",
+    onboardingVersion: "1",
   }
 
   const insertSetting = db.prepare(

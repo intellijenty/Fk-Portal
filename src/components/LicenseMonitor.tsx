@@ -41,6 +41,7 @@ const LicenseMonitor = () => {
 
       if (result.success) {
         setIsAuthorized(true)
+        window.dispatchEvent(new CustomEvent("traccia:license-activated"))
       } else {
         setError(result.message || "Invalid license key")
       }

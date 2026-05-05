@@ -43,6 +43,7 @@ import { useNotificationSettings } from "@/hooks/use-notification-settings"
 import { useUpdater } from "@/hooks/use-updater"
 import { Toaster } from "@/components/ui/sonner"
 import { cn, computeLocalBreakSeconds } from "@/lib/utils"
+import { OnboardingController } from "@/components/onboarding/onboarding-controller"
 import LicenseMonitor from "./components/LicenseMonitor"
 import { Badge } from "./components/ui/badge"
 
@@ -235,7 +236,7 @@ function WideLayout({
       {/* Left panel — calendar + stats */}
       <aside className="scrollbar-hide relative flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-tour="app-header">
             <div className="flex items-center gap-2">
               <HugeiconsIcon
                 icon={Timer02Icon}
@@ -266,7 +267,7 @@ function WideLayout({
 
         <div className="mx-5 h-px bg-border/50" />
 
-        <div className="flex-1 px-5 py-4">
+        <div className="flex-1 px-5 py-4" data-tour="keyboard-nav">
           <WeeklyStats
             weekSummaries={summaries}
             selectedDate={selectedDate}
@@ -638,6 +639,7 @@ export default function App() {
       <PortalStoreProvider>
         <AppUpdater />
         <AppNotifications />
+        <OnboardingController isWide={isWide} />
         <AppInner
           isUltraWide={isUltraWide}
           isWide={isWide}

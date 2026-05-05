@@ -75,6 +75,9 @@ function buildSettingsResponse(raw: Record<string, string>) {
     nightShiftEnd: raw.nightShiftEnd || "06:00",
     // Notification fired-state persistence
     notificationsFiredKeys: raw.notificationsFiredKeys || "",
+    // Onboarding
+    onboardingCompleted: raw.onboardingCompleted === "true",
+    onboardingVersion: parseInt(raw.onboardingVersion ?? "1", 10),
   }
 }
 

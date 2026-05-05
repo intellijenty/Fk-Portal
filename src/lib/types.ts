@@ -72,6 +72,9 @@ export interface AppSettings {
   nightShiftEnd: string   // "HH:MM"
   // Notification fired-state persistence
   notificationsFiredKeys: string
+  // Onboarding
+  onboardingCompleted: boolean
+  onboardingVersion: number
 }
 
 export interface WeekDaySummary {
