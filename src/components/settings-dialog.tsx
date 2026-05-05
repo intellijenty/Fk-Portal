@@ -638,7 +638,7 @@ function AccessibilityTab() {
         </div>
 
         {/* Mode selector */}
-        <div
+        {/* <div
           className={cn(
             "flex flex-col space-y-1 transition-opacity",
             !settings.enabled && "pointer-events-none opacity-40"
@@ -678,7 +678,7 @@ function AccessibilityTab() {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   )

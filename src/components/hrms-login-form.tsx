@@ -59,7 +59,7 @@ export function HrmsLoginForm({
         <label className="text-xs font-medium text-muted-foreground">Email</label>
         <Input
           type="email"
-          placeholder="user@roimaint.com"
+          placeholder="john.wick@roimaint.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-9 text-sm"
