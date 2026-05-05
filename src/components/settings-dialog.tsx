@@ -17,6 +17,7 @@ import {
   Cancel01Icon,
   UniversalAccessCircleIcon,
   InformationCircleIcon,
+  Timer02FreeIcons,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { HotkeyRecorder } from "@/components/hotkey-recorder"
@@ -700,7 +701,7 @@ function AboutTab() {
       {/* App identity */}
       <div className="flex flex-col items-center gap-3 py-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 ring-1 ring-border/40">
-          <span className="text-2xl font-bold tracking-tight">T</span>
+          <HugeiconsIcon icon={Timer02FreeIcons} size={34} />
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold">Traccia</p>

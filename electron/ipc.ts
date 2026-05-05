@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, Notification } from "electron"
+import { app, ipcMain, BrowserWindow, Notification, shell } from "electron"
 import { registerHotkey } from "./hotkey"
 import { syncLeaves } from "./leave-sync"
 import { checkForUpdates, downloadUpdate, quitAndInstall } from "./updater"
@@ -107,6 +107,10 @@ export function registerIpcHandlers(
     return { success: false, message: 'Invalid License Key' };
   });
   
+  ipcMain.handle("shell:open-external", (_event, url: string) => {
+    shell.openExternal(url)
+  })
+
   ipcMain.handle("show-notification", (_event, title: string, body: string) => {
     if (Notification.isSupported()) {
       new Notification({ title, body }).show()

@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   showNotification: (title: string, body: string) =>
     ipcRenderer.invoke("show-notification", title, body),
   restartApp: () => ipcRenderer.invoke("restart-app"),
+  openExternal: (url: string) => ipcRenderer.invoke("shell:open-external", url),
 
   // ── Auto-update ──
   getAppVersion: () => ipcRenderer.invoke("app:version"),

@@ -264,6 +264,7 @@ export interface ElectronAPI {
   windowToggleSize: () => Promise<void>
   showNotification: (title: string, body: string) => Promise<void>
   restartApp: () => Promise<void>
+  openExternal: (url: string) => Promise<void>
 
   // Auto-update
   getAppVersion: () => Promise<string>

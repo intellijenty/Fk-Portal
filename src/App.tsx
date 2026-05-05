@@ -36,6 +36,7 @@ import {
   usePortalStoreContext,
 } from "@/contexts/portal-store"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { ShortcutsDialog } from "@/components/shortcuts-dialog"
 import { useHotkeyBehavior } from "@/hooks/use-hotkey-behavior"
 import { useAppShortcuts } from "@/hooks/use-app-shortcuts"
 import { useNotificationEngine } from "@/hooks/use-notification-engine"
@@ -558,6 +559,7 @@ export default function App() {
     end: generalSettings.nightShiftEnd,
   }
 
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const pendingSettings = useRef(false)
   const prevIsWide = useRef(isWide)
 
@@ -612,6 +614,9 @@ export default function App() {
       })
     },
     "go-today": () => setSelectedDate(getLocalDate()),
+    "open-shortcuts": () => {
+      window.dispatchEvent(new CustomEvent("traccia:open-shortcuts"))
+    },
     "close-window": () => {
       if (document.querySelector('[role="dialog"]')) return
       if (isElectron) window.electronAPI.windowHide()
@@ -636,6 +641,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <PortalStoreProvider>
         <AppUpdater />
         <AppNotifications />

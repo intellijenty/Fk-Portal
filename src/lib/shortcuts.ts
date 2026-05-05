@@ -18,6 +18,7 @@
 export type ShortcutId =
   | "toggle-window-size"
   | "open-settings"
+  | "open-shortcuts"
   | "day-prev"
   | "day-next"
   | "go-today"
@@ -96,6 +97,14 @@ export const SHORTCUTS: readonly AppShortcut[] = [
     defaultKey: "Escape",
     label: "Close Window",
     description: "Hide the app window (or close the topmost dialog first)",
+    configurable: false,
+  },
+  {
+    id: "open-shortcuts",
+    defaultKey: "?",
+    modifiers: { shift: true },
+    label: "Keyboard Shortcuts",
+    description: "Show keyboard shortcuts reference",
     configurable: false,
   },
 ] as const
