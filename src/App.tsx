@@ -71,9 +71,11 @@ function AppNotifications() {
   const portalSecondsToday = todayPortal?.success
     ? todayPortal.totalMinutes * 60
     : 0
+  const todayLiveMinutes = Math.floor(portalSecondsToday / 60)
+  const { adjustedTargetMinutes } = useWeeklyTarget(todayLiveMinutes)
 
   useNotificationEngine({
-    dailyTargetSeconds: prefs.dailyTargetMinutes * 60,
+    dailyTargetSeconds: adjustedTargetMinutes * 60,
     portalSecondsToday,
     targetEnabled: prefs.targetEnabled,
     targetSource: prefs.targetSource,

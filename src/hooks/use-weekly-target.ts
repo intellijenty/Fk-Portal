@@ -20,6 +20,8 @@ export interface WeeklyTargetResult {
   tooltipText: string | null
   /** Whether target differs from the standard 8h */
   isAdjusted: boolean
+  /** How the target was determined — "user-override" reserved for future manual override feature */
+  source: "standard" | "weekly-adjusted"
 }
 
 /**
@@ -40,10 +42,17 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
   const { dayMarks } = useDayMarks()
 
   return useMemo(() => {
-    // Minutes worked Mon–(yesterday) from portal cache
+    // Minutes worked Mon–(yesterday) from portal cache, with leave marks applied
     const workedBeforeToday = summaries
       .filter((s) => s.date < today)
-      .reduce((sum, s) => sum + Math.floor(s.totalSeconds / 60), 0)
+      .reduce((sum, s) => {
+        const mark = dayMarks.get(s.date)
+        const autoMP = s.missPunchCount > 0
+        if (mark === "mp" || (autoMP && mark !== "fl" && mark !== "hl")) return sum
+        if (mark === "fl") return sum + 480
+        if (mark === "hl") return sum + Math.floor(s.totalSeconds / 60) + 240
+        return sum + Math.floor(s.totalSeconds / 60)
+      }, 0)
 
     const totalWorked = workedBeforeToday + todayLiveMinutes
     const weeklyComplete = totalWorked >= WEEKLY_TARGET_MIN
@@ -57,15 +66,16 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
         weeklyComplete,
         tooltipText: null,
         isAdjusted: false,
+        source: "standard",
       }
     }
 
     // ── Friday adjustment ──
     const mark = dayMarks.get(today)
-    const floor = mark === "hl" ? 240 : 360 // 4h or 6h
+    const floor = mark === "hl" ? 240 : 360 // HL=4h, full day=6h minimum
 
-    // How many minutes still needed to reach 40h
-    const remaining = Math.max(0, WEEKLY_TARGET_MIN - workedBeforeToday)
+    // How many minutes still needed to reach 40h (subtract today's already-worked minutes)
+    const remaining = Math.max(0, WEEKLY_TARGET_MIN - workedBeforeToday - todayLiveMinutes)
     // Never go below floor; no ceiling (can exceed 8h to catch up)
     const adjusted = Math.max(floor, remaining)
     const isAdjusted = adjusted !== 480
@@ -76,9 +86,9 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
     } else if (remaining > 480) {
       tooltipText = `Target Extended to ${fmtHM(adjusted)}. Today needs a bit extra to reach weekly target.`
     } else {
-      tooltipText = `Target Reduced ${adjusted !== remaining ? "to" + fmtHM(adjusted) : ""}. Only ${fmtHM(remaining)} needed to hit weekly target.`
+      tooltipText = `Target Reduced to ${fmtHM(adjusted)}. Only ${fmtHM(remaining)} needed to hit weekly target.`
     }
 
-    return { adjustedTargetMinutes: adjusted, weeklyComplete, tooltipText, isAdjusted }
+    return { adjustedTargetMinutes: adjusted, weeklyComplete, tooltipText, isAdjusted, source: "weekly-adjusted" }
   }, [summaries, dayMarks, today, todayLiveMinutes])
 }
