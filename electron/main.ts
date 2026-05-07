@@ -157,7 +157,7 @@ function createWindow(): void {
     minWidth: 400,
     minHeight: 600,
     resizable: true,
-    frame: true,
+    titleBarStyle: "hidden",
     show: false,
     backgroundColor: "#0a0a0a",
     icon: path.join(__dirname, "../resources/desktopIcon.png"),
@@ -198,6 +198,11 @@ function createWindow(): void {
       mainWindow?.show()
     }
   })
+
+  mainWindow.on("maximize", () => mainWindow?.webContents.send("window:maximized", true))
+  mainWindow.on("unmaximize", () => mainWindow?.webContents.send("window:maximized", false))
+  mainWindow.on("focus", () => mainWindow?.webContents.send("window:focus", true))
+  mainWindow.on("blur", () => mainWindow?.webContents.send("window:focus", false))
 }
 
 // ─────────────────────────────────────────────────────────────

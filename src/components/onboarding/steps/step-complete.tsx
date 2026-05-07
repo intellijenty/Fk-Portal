@@ -32,7 +32,7 @@ function ConfigItem({
       <HugeiconsIcon
         icon={icon as Parameters<typeof HugeiconsIcon>[0]["icon"]}
         size={14}
-        className={done ? "text-emerald-400" : "text-muted-foreground/30"}
+        className={done ? "text-foreground" : "text-muted-foreground/30"}
       />
       <span
         className={cn(

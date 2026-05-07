@@ -268,6 +268,26 @@ export function registerIpcHandlers(
     }
   })
 
+  // ── Native window controls ──
+
+  ipcMain.handle("window:minimize", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+
+  ipcMain.handle("window:maximize-toggle", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || getWindow()
+    if (!win) return
+    win.isMaximized() ? win.unmaximize() : win.maximize()
+  })
+
+  ipcMain.handle("window:close", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+
+  ipcMain.handle("window:is-maximized", (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+  })
+
   // ── HRMS portal handlers ──
 
   ipcMain.handle(

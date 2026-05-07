@@ -18,7 +18,7 @@ import { Card, CardContent } from "./ui/card"
 
 // Skeleton that mirrors the real portal cards layout
 
-function PortalCardsSkeleton() {
+export function PortalCardsSkeleton() {
   return (
     <>
       {/* Two cards row — matches grid grid-cols-2 gap-3 */}
@@ -33,10 +33,10 @@ function PortalCardsSkeleton() {
       </div>
 
       {/* Log skeleton */}
-      <Card>
+      <Card className="bg-background">
         <CardContent className="p-0">
           <div className="px-4">
-            <Skeleton className="h-5 w-full rounded-full" />
+            <Skeleton className="h-5 w-full rounded-full bg-card/30" />
           </div>
         </CardContent>
       </Card>

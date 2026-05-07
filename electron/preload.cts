@@ -81,6 +81,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   windowHide: () => ipcRenderer.invoke("window-hide"),
   windowToggleSize: () => ipcRenderer.invoke("window-toggle-size"),
+  windowMinimize: () => ipcRenderer.invoke("window:minimize"),
+  windowMaximizeToggle: () => ipcRenderer.invoke("window:maximize-toggle"),
+  windowClose: () => ipcRenderer.invoke("window:close"),
+  windowIsMaximized: () => ipcRenderer.invoke("window:is-maximized"),
+  onWindowMaximized: (cb: (isMax: boolean) => void) => {
+    const fn = (_: unknown, isMax: boolean) => cb(isMax)
+    ipcRenderer.on("window:maximized", fn)
+    return () => ipcRenderer.removeListener("window:maximized", fn)
+  },
+  onWindowFocus: (cb: (focused: boolean) => void) => {
+    const fn = (_: unknown, focused: boolean) => cb(focused)
+    ipcRenderer.on("window:focus", fn)
+    return () => ipcRenderer.removeListener("window:focus", fn)
+  },
   showNotification: (title: string, body: string) =>
     ipcRenderer.invoke("show-notification", title, body),
   restartApp: () => ipcRenderer.invoke("restart-app"),

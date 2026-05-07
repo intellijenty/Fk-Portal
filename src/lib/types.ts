@@ -262,6 +262,12 @@ export interface ElectronAPI {
   onHotkeyPushShow: (callback: (triggerKey: string) => void) => () => void
   windowHide: () => Promise<void>
   windowToggleSize: () => Promise<void>
+  windowMinimize: () => Promise<void>
+  windowMaximizeToggle: () => Promise<void>
+  windowClose: () => Promise<void>
+  windowIsMaximized: () => Promise<boolean>
+  onWindowMaximized: (cb: (isMax: boolean) => void) => () => void
+  onWindowFocus: (cb: (focused: boolean) => void) => () => void
   showNotification: (title: string, body: string) => Promise<void>
   restartApp: () => Promise<void>
   openExternal: (url: string) => Promise<void>

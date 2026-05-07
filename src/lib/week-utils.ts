@@ -52,14 +52,16 @@ export function computeWeeklyBalance(
   balance: number
   effectiveTarget: number
   totalWorked: number
+  workedPast: number
   workingDays: number
+  pastWorkingDays: number
   mpDays: number
   leaveDays: number
 } {
   let workingDays = 0
-  let pastWorkingDays = 0 // excludes today — used for balance target
+  let pastWorkingDays = 0
   let totalWorked = 0
-  let workedPast = 0 // excludes today — used for balance only
+  let workedPast = 0
   let mpDays = 0
   let leaveDays = 0
 
@@ -67,54 +69,63 @@ export function computeWeeklyBalance(
 
   for (const date of weekDays) {
     const dow = new Date(date + "T00:00:00").getDay()
-    if (dow < 1 || dow > 5) continue // skip weekends
+    if (dow < 1 || dow > 5) continue
 
     const mark = dayMarks.get(date)
     const isFuture = date > today
-    const isToday = date === today
+    const isPast = date < today
 
     if (isFuture) {
-      // Future day: only affects effectiveTarget, no worked credit yet
-      if (mark === "mp") mpDays++
-      else {
+      if (mark === "mp") {
+        mpDays++
+      } else {
         workingDays++
-        if (mark === "fl" || mark === "hl") leaveDays++
+        if (mark === "fl") {
+          leaveDays++
+          totalWorked += 8 * 3600
+        } else if (mark === "hl") {
+          leaveDays++
+          totalWorked += 4 * 3600
+        }
       }
       continue
     }
 
-    // Past or today: counts toward effectiveTarget and totalWorked
     const summary = summaryMap.get(date)
     const autoMP = (summary?.missPunchCount ?? 0) > 0
-    const portalSecs = summary?.totalSeconds || 0
+    const portalSecs = summary?.totalSeconds ?? 0
 
+    let secs = 0
     if (mark === "fl") {
-      leaveDays++; workingDays++
-      if (!isToday) pastWorkingDays++
-      totalWorked += 8 * 3600
-      if (!isToday) workedPast += 8 * 3600
+      leaveDays++
+      workingDays++
+      secs = 8 * 3600
     } else if (mark === "hl") {
-      leaveDays++; workingDays++
-      if (!isToday) pastWorkingDays++
-      totalWorked += portalSecs + 4 * 3600
-      if (!isToday) workedPast += portalSecs + 4 * 3600
+      leaveDays++
+      workingDays++
+      secs = portalSecs + 4 * 3600
     } else if (mark === "mp" || autoMP) {
       mpDays++
+      continue
     } else {
       workingDays++
-      if (!isToday) pastWorkingDays++
-      totalWorked += portalSecs
-      if (!isToday) workedPast += portalSecs
+      secs = portalSecs
+    }
+
+    totalWorked += secs
+    if (isPast) {
+      pastWorkingDays++
+      workedPast += secs
     }
   }
 
-  const effectiveTarget = workingDays * 8 * 3600
-  const pastTarget = pastWorkingDays * 8 * 3600
   return {
-    balance: workedPast - pastTarget,
-    effectiveTarget,
+    balance: workedPast - pastWorkingDays * 8 * 3600,
+    effectiveTarget: workingDays * 8 * 3600,
     totalWorked,
+    workedPast,
     workingDays,
+    pastWorkingDays,
     mpDays,
     leaveDays,
   }
@@ -141,11 +152,11 @@ export function formatWeekLabel(start: string, end: string): string {
 }
 
 export function formatDateDisplay(date: string): string {
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-GB", {
     weekday: "long",
-    year: "numeric",
-    month: "long",
     day: "numeric",
+    month: "short",
+    year: "numeric",
   })
 }
 

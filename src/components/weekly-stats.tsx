@@ -129,6 +129,8 @@ export function WeeklyStats({
     }
   })
 
+  const yMax = Math.max(10, ...chartData.map((d) => d.hours))
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-5" data-tour="weekly-stats">
@@ -157,8 +159,8 @@ export function WeeklyStats({
               Daily Average
             </p>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
-              {wb.workingDays > 0
-                ? formatHM(Math.round(wb.totalWorked / wb.workingDays))
+              {wb.pastWorkingDays > 0
+                ? formatHM(Math.round(wb.workedPast / wb.pastWorkingDays))
                 : "0h"}
             </p>
           </div>
@@ -184,7 +186,7 @@ export function WeeklyStats({
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
-            weekPct >= 100 ? "bg-accent-foreground" : "bg-accent-foreground"
+            weekPct >= 100 ? "bg-emerald-500" : "bg-accent-foreground"
           )}
           style={{ width: `${weekPct}%` }}
         />
@@ -222,7 +224,7 @@ export function WeeklyStats({
                 }}
               />
               <YAxis
-                domain={[0, 10]}
+                domain={[0, Math.ceil(yMax)]}
                 width={32}
                 tickLine={false}
                 axisLine={false}
@@ -319,18 +321,6 @@ export function WeeklyStats({
                   )}
                 >
                   <div className="px-2 py-2 text-center">
-                    {/* <p
-                      className={cn(
-                        "text-[11px] font-semibold",
-                        d.isToday
-                          ? "text-indigo-400"
-                          : d.isFuture
-                            ? "text-muted-foreground/40"
-                            : "text-muted-foreground"
-                      )}
-                    >
-                      {d.label}
-                    </p> */}
                     <p
                       className={cn(
                         "mt-1 font-mono text-xs font-bold tabular-nums",

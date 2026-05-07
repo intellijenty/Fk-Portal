@@ -4,7 +4,7 @@ import { StatusCard } from "@/components/status-card"
 import { TotalCard } from "@/components/total-card"
 import { ManualEntry } from "@/components/manual-entry"
 import { EventLog } from "@/components/event-log"
-import { PortalSection } from "@/components/portal-section"
+import { PortalCardsSkeleton, PortalSection } from "@/components/portal-section"
 import { DayView } from "@/components/day-view"
 import { WeeklyCalendar } from "@/components/weekly-calendar"
 import { WeeklyStats } from "@/components/weekly-stats"
@@ -47,6 +47,7 @@ import { cn, computeLocalBreakSeconds } from "@/lib/utils"
 import { OnboardingController } from "@/components/onboarding/onboarding-controller"
 import LicenseMonitor from "./components/LicenseMonitor"
 import { Badge } from "./components/ui/badge"
+import { TitleBar } from "./components/ui/title-bar"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -110,85 +111,105 @@ function NarrowLayout({
     deleteEntry,
   } = usePunchData(selectedDate)
 
-  if (loading || !status) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-sm text-muted-foreground">
-          Loading...
-        </div>
-      </div>
-    )
-  }
-
   const headerDate = formatDateDisplay(selectedDate)
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <header className="shrink-0 px-5 pt-4 pb-2">
-        <div className="flex items-center justify-between">
-          {/* Date */}
-          <div className="flex items-center gap-1.5">
-            <HugeiconsIcon
-              icon={Calendar02Icon}
-              size={14}
-              className="shrink-0 text-muted-foreground"
+    <div className="flex h-full flex-col bg-background">
+      <div className="scrollbar-hide flex flex-1 flex-col overflow-y-auto">
+        {(loading || !status) && (
+          <>
+            <header className="sticky top-0 z-10 h-16 bg-background/50 backdrop-blur-md border-b border-border/30"/>
+            <div className="flex flex-col gap-4 px-5 pt-2 pb-5">
+              <PortalCardsSkeleton />
+            </div>
+          </>
+        )}
+        {!loading && status && (<>
+        <header className="sticky top-0 z-10 px-5 pt-4 pb-2 bg-background/50 backdrop-blur-md border-b border-border/30">
+          <div className="flex items-center justify-between">
+            {/* Date */}
+            <div className="flex items-center gap-1">
+              <HugeiconsIcon
+                icon={Calendar02Icon}
+                size={15}
+                className="shrink-0"
+              />
+              {/* If today then show "Today" */}
+              <span className="text-sm font-medium tracking-tight text-muted-foreground">
+                {isToday ? (
+                  <>
+                    <span className="flex gap-1.5">
+                      <span className="text-foreground">Today</span>
+                      <span className="font-bold">&middot;</span>
+                      <span>
+                        {new Date().toLocaleString("en-GB", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  headerDate
+                )}
+              </span>
+              {!isToday && (
+                <Badge variant="outline" className="ml-1 text-muted-foreground">
+                  Past data
+                </Badge>
+              )}
+            </div>
+            {/* Right: balance chips */}
+            <div className="flex items-center gap-2">
+              <NarrowBalanceChips />
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-col gap-4 px-5 pt-2 pb-5">
+          <div className="shrink-0">
+            <PortalSection date={selectedDate} />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Local
+            </h2>
+            <div className="h-px flex-1 bg-border/50" />
+          </div>
+
+          <div className="grid shrink-0 grid-cols-2 gap-3">
+            <StatusCard status={status} />
+            <TotalCard
+              totalSeconds={status.totalSecondsToday}
+              workingSeconds={
+                status.workMode !== "all" ? status.workingSecondsToday : undefined
+              }
+              isIn={status.isIn}
+              breakSeconds={computeLocalBreakSeconds(
+                events,
+                status.workWindow,
+                status.workMode
+              )}
             />
-            <span className="text-sm font-medium tracking-tight">
-              {headerDate}
-            </span>
-            {!isToday && (
-              <Badge variant="outline" className="text-muted-foreground">
-                Past data
-              </Badge>
-            )}
           </div>
-          {/* Right: balance chips */}
-          <div className="flex items-center gap-2">
-            <NarrowBalanceChips />
+
+          <div className="shrink-0">
+            <ManualEntry date={selectedDate} onAddEntry={addEntry} />
           </div>
-        </div>
-      </header>
 
-      <div className="scrollbar-hide flex flex-1 flex-col gap-4 overflow-y-auto px-5 pt-2 pb-5">
-        <div className="shrink-0">
-          <PortalSection date={selectedDate} />
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            Local
-          </h2>
-          <div className="h-px flex-1 bg-border/50" />
-        </div>
-
-        <div className="grid shrink-0 grid-cols-2 gap-3">
-          <StatusCard status={status} />
-          <TotalCard
-            totalSeconds={status.totalSecondsToday}
-            workingSeconds={
-              status.workMode !== "all" ? status.workingSecondsToday : undefined
-            }
-            isIn={status.isIn}
-            breakSeconds={computeLocalBreakSeconds(
-              events,
-              status.workWindow,
-              status.workMode
-            )}
+          <EventLog
+            entries={events}
+            lastUpdated={lastUpdated}
+            workWindow={status.workWindow}
+            workMode={status.workMode}
+            onDelete={deleteEntry}
+            onEdit={editEntry}
           />
         </div>
-
-        <div className="shrink-0">
-          <ManualEntry date={selectedDate} onAddEntry={addEntry} />
-        </div>
-
-        <EventLog
-          entries={events}
-          lastUpdated={lastUpdated}
-          workWindow={status.workWindow}
-          workMode={status.workMode}
-          onDelete={deleteEntry}
-          onEdit={editEntry}
-        />
+        </>)}
       </div>
     </div>
   )
@@ -233,11 +254,14 @@ function WideLayout({
   const { connected: portalConnected } = usePortalStoreContext()
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full bg-background">
       {/* Left panel — calendar + stats */}
       <aside className="scrollbar-hide relative flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between" data-tour="app-header">
+          <div
+            className="flex items-center justify-between"
+            data-tour="app-header"
+          >
             <div className="flex items-center gap-2">
               <HugeiconsIcon
                 icon={Timer02Icon}
@@ -330,7 +354,7 @@ function UltraWideLayout({
   const { connected: portalConnected } = usePortalStoreContext()
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full bg-background">
       {/* Left — monthly calendar + insights */}
       <aside className="scrollbar-hide relative flex w-[300px] shrink-0 flex-col overflow-y-auto border-r border-border/50">
         <div className="shrink-0 px-4 pt-5 pb-3">
@@ -564,6 +588,12 @@ export default function App() {
   const prevIsWide = useRef(isWide)
 
   useEffect(() => {
+    const handler = () => setSelectedDate(getLocalDate())
+    window.addEventListener("traccia:go-today", handler)
+    return () => window.removeEventListener("traccia:go-today", handler)
+  }, [])
+
+  useEffect(() => {
     const wasWide = prevIsWide.current
     prevIsWide.current = isWide
     if (!wasWide && isWide && pendingSettings.current) {
@@ -646,21 +676,26 @@ export default function App() {
         <AppUpdater />
         <AppNotifications />
         <OnboardingController isWide={isWide} />
-        <AppInner
-          isUltraWide={isUltraWide}
-          isWide={isWide}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          dayMarks={dayMarks}
-          onCycleMark={cycleMark}
-          onSetMark={setMark}
-          workWindows={workWindows}
-          onSetWorkWindow={(date, start, end, source) =>
-            setWorkWindow(date, start, end, source || "manual")
-          }
-          onDeleteWorkWindow={deleteWorkWindow}
-          nightShift={nightShift}
-        />
+        <div className="flex h-screen flex-col overflow-hidden bg-background">
+          <TitleBar />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <AppInner
+              isUltraWide={isUltraWide}
+              isWide={isWide}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              dayMarks={dayMarks}
+              onCycleMark={cycleMark}
+              onSetMark={setMark}
+              workWindows={workWindows}
+              onSetWorkWindow={(date, start, end, source) =>
+                setWorkWindow(date, start, end, source || "manual")
+              }
+              onDeleteWorkWindow={deleteWorkWindow}
+              nightShift={nightShift}
+            />
+          </div>
+        </div>
         <LicenseMonitor />
       </PortalStoreProvider>
       <Toaster />
