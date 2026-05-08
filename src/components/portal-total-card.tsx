@@ -58,7 +58,7 @@ export function PortalTotalCard({
         {/* Label row */}
         <div className="flex items-center gap-1.5">
           <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            Portal Completion
+            {completed ? "Target Completed" : "Portal Completion"}
           </p>
           {isAdjusted && (
             <Tooltip>
@@ -76,7 +76,7 @@ export function PortalTotalCard({
 
         {/* Primary number */}
         <p className="mt-2 font-mono text-3xl font-bold tracking-tight tabular-nums">
-          {isIn
+          {isIn && !completed
             ? formatCompletionTime(remainingMinutes)
             : formatHoursMinutes(totalMinutes)}
         </p>

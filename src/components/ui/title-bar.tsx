@@ -83,7 +83,7 @@ export function CurrentDateTime() {
   }, [])
 
   return (
-    <div className="flex gap-1.5 pl-3 text-muted-foreground font-semibold">
+    <div className="flex gap-1.5 pl-3 font-semibold text-muted-foreground">
       <span className="text-sm tracking-tight">
         {currentDateTime.toLocaleString("en-GB", {
           day: "numeric",
@@ -134,7 +134,9 @@ export function TitleBar() {
       <CurrentDateTime />
 
       {/* Drag region fills center */}
-      <div className="flex-1" />
+      <div className="flex grow items-center justify-center">
+        {/* <MenuBar /> */}
+      </div>
 
       {/* Window controls - right */}
       <WindowControls />
