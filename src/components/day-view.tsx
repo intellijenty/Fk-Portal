@@ -21,8 +21,10 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
     lastUpdated,
     isToday,
     addEntry,
+    addEntryPair,
     editEntry,
-    deleteEntry,
+    deleteEntryConfirmed,
+    deleteEntryPair,
   } = usePunchData(date)
 
   if (loading || !status) {
@@ -76,7 +78,7 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
         {/* Manual entry — hidden for future dates */}
         {date <= new Date().toLocaleDateString("en-CA") && (
           <div className="shrink-0" data-tour="manual-entry">
-            <ManualEntry date={date} onAddEntry={addEntry} />
+            <ManualEntry date={date} onAddEntry={addEntry} onAddEntryPair={addEntryPair} />
           </div>
         )}
 
@@ -86,7 +88,8 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
           lastUpdated={lastUpdated}
           workWindow={status.workWindow}
           workMode={status.workMode}
-          onDelete={deleteEntry}
+          onDeleteConfirmed={deleteEntryConfirmed}
+          onDeletePair={deleteEntryPair}
           onEdit={editEntry}
         />
       </div>

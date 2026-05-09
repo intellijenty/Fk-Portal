@@ -4,11 +4,14 @@ import { syncLeaves } from "./leave-sync"
 import { checkForUpdates, downloadUpdate, quitAndInstall } from "./updater"
 import {
   getEntriesByDate,
+  getEntryById,
   getLastEntry,
   getLastEntryByDate,
   insertEntry,
+  insertEntryPair,
   updateEntry,
   deleteEntry,
+  findPairedEntry,
   calculateTotalSecondsForDate,
   calculateWorkingSecondsForDate,
   resolveEffectiveMode,
@@ -188,11 +191,43 @@ export function registerIpcHandlers(
       _event,
       data: { date: string; time: string; type: "LOGIN" | "LOGOUT"; notes?: string }
     ) => {
-      // Combine date and time into ISO timestamp
       const timestamp = new Date(`${data.date}T${data.time}`).toISOString()
+
+      // Reject future timestamps (60s grace for clock skew)
+      if (new Date(timestamp).getTime() > Date.now() + 60_000) {
+        throw new Error("Cannot add entry with a future timestamp")
+      }
+
+      // Reject exact duplicate timestamps on the same date
+      const existing = getEntriesByDate(data.date)
+      if (existing.some(e => e.timestamp === timestamp)) {
+        throw new Error("An entry with this exact timestamp already exists")
+      }
+
+      // insertEntry handles consecutive-type guard (throws for manual source)
       const entry = insertEntry(data.type, "manual", "via manual", timestamp, data.notes)
       onDataChange()
       return entry
+    }
+  )
+
+  ipcMain.handle(
+    "add-entry-pair",
+    (
+      _event,
+      data: { date: string; time1: string; time2: string }
+    ) => {
+      const ts1 = new Date(`${data.date}T${data.time1}`).toISOString()
+      const ts2 = new Date(`${data.date}T${data.time2}`).toISOString()
+
+      const laterTs = ts1 > ts2 ? ts1 : ts2
+      if (new Date(laterTs).getTime() > Date.now() + 60_000) {
+        throw new Error("Cannot add entry with a future timestamp")
+      }
+
+      const [firstEntry, secondEntry] = insertEntryPair(ts1, ts2, data.date)
+      onDataChange()
+      return { firstEntry, secondEntry }
     }
   )
 
@@ -203,6 +238,7 @@ export function registerIpcHandlers(
       id: number,
       updates: { timestamp?: string; type?: string; notes?: string }
     ) => {
+      // updateEntry validates sequence order internally (throws if pair would invert)
       const entry = updateEntry(id, updates)
       onDataChange()
       return entry
@@ -210,7 +246,30 @@ export function registerIpcHandlers(
   )
 
   ipcMain.handle("delete-entry", (_event, id: number) => {
+    const entry = getEntryById(id)
+    if (!entry) return { willOrphan: null }
+
+    const sorted = getEntriesByDate(entry.date)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)
+    const paired = findPairedEntry(sorted, id)
+
+    // Return orphan info to renderer — let renderer decide whether to delete pair
+    return { willOrphan: paired ? paired.id : null }
+  })
+
+  ipcMain.handle("delete-entry-confirmed", (_event, id: number) => {
     deleteEntry(id)
+    onDataChange()
+  })
+
+  ipcMain.handle("delete-entry-pair", (_event, id: number) => {
+    const entry = getEntryById(id)
+    if (!entry) return
+    const sorted = getEntriesByDate(entry.date)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)
+    const paired = findPairedEntry(sorted, id)
+    deleteEntry(id)
+    if (paired) deleteEntry(paired.id)
     onDataChange()
   })
 

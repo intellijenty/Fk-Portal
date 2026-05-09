@@ -70,6 +70,8 @@ const TRIGGER_LABELS: Record<string, string> = {
   "via estimated": "crash recovery",
   "via quit": "app quit",
   "via manual": "manual entry",
+  "via midnight": "midnight split",
+  "auto-compensate": "sequence repair",
 }
 
 function getSourceTooltip(source: string, trigger: string): string {
@@ -99,13 +101,16 @@ function isEntryInWorkWindow(
 
 interface EventLogItemProps {
   entry: PunchEntry
+  pairedEntryId: number | null
+  isCorrupted?: boolean
   workWindow?: WorkWindow | null
   workMode?: "holiday" | "all" | "window"
-  onDelete: (id: number) => Promise<void>
+  onDeleteConfirmed: (id: number) => Promise<void>
+  onDeletePair: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, onEdit }: EventLogItemProps) {
+export function EventLogItem({ entry, pairedEntryId, isCorrupted = false, workWindow, workMode = "all", onDeleteConfirmed, onDeletePair, onEdit }: EventLogItemProps) {
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTime, setEditTime] = useState("")
@@ -146,10 +151,19 @@ export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, on
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  async function handleDelete() {
+  async function handleDeleteOnly() {
     setDeleting(true)
     try {
-      await onDelete(entry.id)
+      await onDeleteConfirmed(entry.id)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function handleDeletePair() {
+    setDeleting(true)
+    try {
+      await onDeletePair(entry.id)
     } finally {
       setDeleting(false)
     }
@@ -158,7 +172,8 @@ export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, on
   return (
     <div className={cn(
       "group flex items-center gap-3 rounded-lg border border-border/40 bg-card/30 px-3 py-2.5 transition-colors hover:bg-card/60",
-      outsideWindow && "opacity-35"
+      outsideWindow && "opacity-35",
+      isCorrupted && "border-amber-500/40 bg-amber-500/5"
     )}>
       {/* Source icon */}
       <Tooltip>
@@ -191,6 +206,11 @@ export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, on
         >
           {isIn ? "IN" : "OUT"}
         </span>
+        {isCorrupted && (
+          <span className="shrink-0 rounded px-1 py-px text-[9px] font-medium text-amber-400 ring-1 ring-amber-500/40">
+            conflict
+          </span>
+        )}
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className="truncate text-xs text-muted-foreground">
             {entry.trigger}
@@ -274,16 +294,32 @@ export function EventLogItem({ entry, workWindow, workMode = "all", onDelete, on
                   <AlertDialogTitle>Delete entry</AlertDialogTitle>
                   <AlertDialogDescription>
                     Remove this {isIn ? "login" : "logout"} entry at{" "}
-                    {formatTime(entry.timestamp)}? This cannot be undone.
+                    {formatTime(entry.timestamp)}?
+                    {pairedEntryId !== null && (
+                      <span className="mt-1.5 block rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-amber-400">
+                        This entry has a paired {isIn ? "logout" : "login"}. Deleting only this entry will leave it orphaned and its session time will be lost.
+                      </span>
+                    )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  {pairedEntryId !== null && (
+                    <AlertDialogAction
+                      onClick={handleDeletePair}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete both
+                    </AlertDialogAction>
+                  )}
                   <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={handleDeleteOnly}
+                    className={pairedEntryId !== null
+                      ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                      : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    }
                   >
-                    Delete
+                    {pairedEntryId !== null ? "Delete only this" : "Delete"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

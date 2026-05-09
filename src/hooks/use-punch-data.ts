@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react"
+import { toast } from "sonner"
 import type { PunchEntry, PunchStatus, EntryType, WorkWindow } from "@/lib/types"
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback
+  // Electron wraps IPC errors: "Error invoking remote method 'X': Error: ACTUAL"
+  const match = err.message.match(/Error invoking remote method '[^']+': Error: (.+)/)
+  return match ? match[1] : err.message
+}
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -241,19 +249,23 @@ export function usePunchData(date?: string) {
   }, [isToday, status?.isIn])
 
   const punchIn = useCallback(async () => {
-    if (isElectron) {
-      await window.electronAPI.punchIn()
-    } else {
-      mockPunch("LOGIN")
+    try {
+      if (isElectron) await window.electronAPI.punchIn()
+      else mockPunch("LOGIN")
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Punch in failed"))
+      throw err
     }
     await refresh()
   }, [refresh])
 
   const punchOut = useCallback(async () => {
-    if (isElectron) {
-      await window.electronAPI.punchOut()
-    } else {
-      mockPunch("LOGOUT")
+    try {
+      if (isElectron) await window.electronAPI.punchOut()
+      else mockPunch("LOGOUT")
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Punch out failed"))
+      throw err
     }
     await refresh()
   }, [refresh])
@@ -265,10 +277,12 @@ export function usePunchData(date?: string) {
       type: "LOGIN" | "LOGOUT"
       notes?: string
     }) => {
-      if (isElectron) {
-        await window.electronAPI.addEntry(data)
-      } else {
-        mockAddEntry(data)
+      try {
+        if (isElectron) await window.electronAPI.addEntry(data)
+        else mockAddEntry(data)
+      } catch (err) {
+        toast.error(getErrorMessage(err, "Failed to add entry"))
+        throw err
       }
       await refresh()
     },
@@ -277,22 +291,59 @@ export function usePunchData(date?: string) {
 
   const editEntry = useCallback(
     async (id: number, updates: { timestamp?: string; notes?: string }) => {
-      if (isElectron) {
-        await window.electronAPI.editEntry(id, updates)
-      } else {
-        mockEditEntry(id, updates)
+      try {
+        if (isElectron) await window.electronAPI.editEntry(id, updates)
+        else mockEditEntry(id, updates)
+      } catch (err) {
+        toast.error(getErrorMessage(err, "Failed to edit entry"))
+        throw err
       }
       await refresh()
     },
     [refresh]
   )
 
-  const deleteEntry = useCallback(
+  const deleteEntryConfirmed = useCallback(
     async (id: number) => {
-      if (isElectron) {
-        await window.electronAPI.deleteEntry(id)
-      } else {
-        mockDeleteEntry(id)
+      try {
+        if (isElectron) await window.electronAPI.deleteEntryConfirmed(id)
+      } catch (err) {
+        toast.error(getErrorMessage(err, "Failed to delete entry"))
+        throw err
+      }
+      await refresh()
+    },
+    [refresh]
+  )
+
+  const deleteEntryPair = useCallback(
+    async (id: number) => {
+      try {
+        if (isElectron) await window.electronAPI.deleteEntryPair(id)
+        else mockDeleteEntry(id)
+      } catch (err) {
+        toast.error(getErrorMessage(err, "Failed to delete entries"))
+        throw err
+      }
+      await refresh()
+    },
+    [refresh]
+  )
+
+  const addEntryPair = useCallback(
+    async (data: { date: string; time1: string; time2: string }) => {
+      try {
+        if (isElectron) {
+          await window.electronAPI.addEntryPair(data)
+        } else {
+          // In mock, insert in chronological order — types don't matter for mock display
+          const [first, second] = [data.time1, data.time2].sort()
+          mockAddEntry({ date: data.date, time: first, type: "LOGOUT" })
+          mockAddEntry({ date: data.date, time: second, type: "LOGIN" })
+        }
+      } catch (err) {
+        toast.error(getErrorMessage(err, "Failed to add pair"))
+        throw err
       }
       await refresh()
     },
@@ -309,7 +360,9 @@ export function usePunchData(date?: string) {
     punchOut,
     addEntry,
     editEntry,
-    deleteEntry,
+    deleteEntryConfirmed,
+    deleteEntryPair,
+    addEntryPair,
     refresh,
   }
 }

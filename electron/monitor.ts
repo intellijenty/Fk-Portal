@@ -9,14 +9,18 @@ let debounceSeconds = 15
 let pendingLogout: { timestamp: string; trigger: string } | null = null
 let onChangeCallback: EventCallback | null = null
 
-function isDuplicateLogout(trigger: string): boolean {
-  const last = getLastEntry()
-  if (!last || last.type !== "LOGOUT") return false
+// Lock state machine
+let isLocked = false
+let pendingUnlockTimer: ReturnType<typeof setTimeout> | null = null
+let resumeFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
-  const lastTime = new Date(last.timestamp).getTime()
-  const now = Date.now()
-  // Suppress duplicate LOGOUT within 5 seconds (sleep + lock race)
-  return now - lastTime < 5000
+const UNLOCK_CONFIRM_MS = 3000  // cancel LOGIN if lock-screen re-fires within 3s (wrong password)
+const RESUME_FALLBACK_MS = 10000 // if no unlock-screen after resume, assume no lock screen
+
+function clearAllTimers(): void {
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; pendingLogout = null }
+  if (pendingUnlockTimer) { clearTimeout(pendingUnlockTimer); pendingUnlockTimer = null }
+  if (resumeFallbackTimer) { clearTimeout(resumeFallbackTimer); resumeFallbackTimer = null }
 }
 
 function logEvent(
@@ -24,42 +28,9 @@ function logEvent(
   trigger: string,
   timestamp?: string
 ): void {
-  if (type === "LOGOUT" && isDuplicateLogout(trigger)) {
-    return
-  }
-
   insertEntry(type, "auto", trigger, timestamp)
   writeHeartbeat()
   onChangeCallback?.()
-}
-
-function handleLogin(trigger: string): void {
-  // If there's a pending logout from debounce, cancel it (rapid lock/unlock)
-  if (pendingLogout && debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-    pendingLogout = null
-    return
-  }
-
-  logEvent("LOGIN", trigger)
-}
-
-function handleLogout(trigger: string): void {
-  const timestamp = new Date().toISOString()
-
-  // Use debounce: delay the logout in case an unlock follows quickly
-  pendingLogout = { timestamp, trigger }
-
-  if (debounceTimer) clearTimeout(debounceTimer)
-
-  debounceTimer = setTimeout(() => {
-    if (pendingLogout) {
-      logEvent("LOGOUT", pendingLogout.trigger, pendingLogout.timestamp)
-      pendingLogout = null
-    }
-    debounceTimer = null
-  }, debounceSeconds * 1000)
 }
 
 export function startMonitoring(
@@ -70,45 +41,75 @@ export function startMonitoring(
   debounceSeconds = debounce
 
   powerMonitor.on("lock-screen", () => {
-    handleLogout("via lock")
+    if (pendingUnlockTimer) {
+      // lock-screen fired within 3s of unlock-screen → wrong password, stay locked
+      clearTimeout(pendingUnlockTimer)
+      pendingUnlockTimer = null
+      return
+    }
+    isLocked = true
+    // Debounce LOGOUT in case user unlocks quickly
+    const timestamp = new Date().toISOString()
+    pendingLogout = { timestamp, trigger: "via lock" }
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      if (pendingLogout) {
+        logEvent("LOGOUT", pendingLogout.trigger, pendingLogout.timestamp)
+        pendingLogout = null
+      }
+      debounceTimer = null
+    }, debounceSeconds * 1000)
   })
 
   powerMonitor.on("unlock-screen", () => {
-    handleLogin("via unlock")
+    if (!isLocked) return  // spurious unlock when already unlocked
+    // Cancel pending LOGOUT (debounce)
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; pendingLogout = null }
+    // Cancel resume fallback — unlock-screen covers this
+    if (resumeFallbackTimer) { clearTimeout(resumeFallbackTimer); resumeFallbackTimer = null }
+    // Wait 3s to confirm this is a real unlock, not a wrong-password bounce
+    pendingUnlockTimer = setTimeout(() => {
+      pendingUnlockTimer = null
+      isLocked = false
+      logEvent("LOGIN", "via unlock")
+    }, UNLOCK_CONFIRM_MS)
   })
 
   powerMonitor.on("suspend", () => {
-    // For suspend, we want immediate logout (no debounce) because
-    // the system is going to sleep
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-      pendingLogout = null
+    clearAllTimers()
+    if (!isLocked) {
+      isLocked = true
+      logEvent("LOGOUT", "via sleep")
     }
-    logEvent("LOGOUT", "via sleep")
+    // if already locked: already have a LOGOUT, skip duplicate
   })
 
   powerMonitor.on("resume", () => {
-    handleLogin("via resume")
+    if (isLocked) {
+      // Woke at lock screen — wait for unlock-screen before logging LOGIN
+      resumeFallbackTimer = setTimeout(() => {
+        resumeFallbackTimer = null
+        // No unlock-screen fired → system has no lock screen configured
+        isLocked = false
+        logEvent("LOGIN", "via resume")
+      }, RESUME_FALLBACK_MS)
+    } else {
+      logEvent("LOGIN", "via resume")
+    }
   })
 
   powerMonitor.on("shutdown", () => {
-    // Immediate logout on shutdown
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-      pendingLogout = null
+    clearAllTimers()
+    if (!isLocked) {
+      isLocked = true
+      logEvent("LOGOUT", "via shutdown")
     }
-    logEvent("LOGOUT", "via shutdown")
   })
 }
 
 export function flushPendingLogout(): void {
   if (pendingLogout) {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-    }
+    clearAllTimers()
     logEvent("LOGOUT", pendingLogout.trigger, pendingLogout.timestamp)
     pendingLogout = null
   }

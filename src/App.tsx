@@ -109,8 +109,10 @@ function NarrowLayout({
     loading,
     lastUpdated,
     addEntry,
+    addEntryPair,
     editEntry,
-    deleteEntry,
+    deleteEntryConfirmed,
+    deleteEntryPair,
   } = usePunchData(selectedDate)
 
   const headerDate = formatDateDisplay(selectedDate)
@@ -199,7 +201,7 @@ function NarrowLayout({
           </div>
 
           <div className="shrink-0">
-            <ManualEntry date={selectedDate} onAddEntry={addEntry} />
+            <ManualEntry date={selectedDate} onAddEntry={addEntry} onAddEntryPair={addEntryPair} />
           </div>
 
           <EventLog
@@ -207,7 +209,8 @@ function NarrowLayout({
             lastUpdated={lastUpdated}
             workWindow={status.workWindow}
             workMode={status.workMode}
-            onDelete={deleteEntry}
+            onDeleteConfirmed={deleteEntryConfirmed}
+            onDeletePair={deleteEntryPair}
             onEdit={editEntry}
           />
         </div>

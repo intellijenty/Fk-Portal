@@ -168,6 +168,49 @@ export function insertEntry(
   const now = timestamp || new Date().toISOString()
   const localDate = new Date(now).toLocaleDateString("en-CA") // YYYY-MM-DD
 
+  // Sequence integrity guard: check positional neighbors at the insertion point
+  const allForDate = db
+    .prepare("SELECT * FROM entries WHERE date = ? ORDER BY timestamp ASC, id ASC")
+    .all(localDate) as DBEntry[]
+
+  const before = [...allForDate].reverse().find(e => e.timestamp < now) ?? null
+  const after  = allForDate.find(e => e.timestamp > now) ?? null
+
+  if (before && before.type === type) {
+    if (source === "manual") {
+      const oppLabel = type === "LOGIN" ? "logout" : "login"
+      throw new Error(
+        `Already ${type === "LOGIN" ? "checked in" : "checked out"} — add a ${oppLabel} before inserting another ${type === "LOGIN" ? "login" : "logout"}`
+      )
+    }
+    // Auto/estimated: insert a 1-second-earlier compensating entry to restore alternation
+    const compensatingType = type === "LOGIN" ? "LOGOUT" : "LOGIN"
+    const compensatingTs = new Date(new Date(now).getTime() - 1000).toISOString()
+    db.prepare(
+      `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes)
+       VALUES (?, ?, ?, 'estimated', 'auto-compensate', 'Inserted to restore sequence integrity')`
+    ).run(compensatingTs, localDate, compensatingType)
+  }
+
+  if (after && after.type === type) {
+    if (source === "manual") {
+      const oppLabel = type === "LOGIN" ? "logout" : "login"
+      throw new Error(
+        `Next entry is also a ${type === "LOGIN" ? "login" : "logout"} — add a ${oppLabel} between them first`
+      )
+    }
+    // Auto/estimated: insert compensating entry 1 second after the new entry
+    const compensatingType = type === "LOGIN" ? "LOGOUT" : "LOGIN"
+    const compensatingTs = new Date(new Date(now).getTime() + 1000).toISOString()
+    const compensatingDate = new Date(compensatingTs).toLocaleDateString("en-CA")
+    if (compensatingDate === localDate) {
+      db.prepare(
+        `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes)
+         VALUES (?, ?, ?, 'estimated', 'auto-compensate', 'Inserted to restore sequence integrity')`
+      ).run(compensatingTs, localDate, compensatingType)
+    }
+  }
+
   const stmt = db.prepare(`
     INSERT INTO entries (timestamp, date, type, source, trigger_label, notes)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -192,6 +235,71 @@ export function getEntryById(id: number): DBEntry | undefined {
   return db.prepare("SELECT * FROM entries WHERE id = ?").get(id) as
     | DBEntry
     | undefined
+}
+
+export function insertEntryPair(
+  timestampA: string,
+  timestampB: string,
+  date: string,
+  notes?: string | null
+): [DBEntry, DBEntry] {
+  // Sort so firstTs is always the earlier of the two
+  const [firstTs, secondTs] = [timestampA, timestampB].sort()
+
+  if (firstTs === secondTs) {
+    throw new Error("Both entries have the same time — use different times")
+  }
+
+  let firstId!: number
+  let secondId!: number
+
+  const run = db.transaction(() => {
+    // Auto-detect types from the entry immediately preceding the first timestamp
+    const existing = db
+      .prepare("SELECT * FROM entries WHERE date = ? ORDER BY timestamp ASC, id ASC")
+      .all(date) as DBEntry[]
+
+    // Duplicate timestamp guard
+    if (existing.some(e => e.timestamp === firstTs || e.timestamp === secondTs)) {
+      throw new Error("An entry with this exact timestamp already exists")
+    }
+
+    const before = [...existing].reverse().find(e => e.timestamp < firstTs) ?? null
+
+    // If no preceding entry, start with LOGIN (new session); otherwise alternate from before
+    const firstType: "LOGIN" | "LOGOUT" = !before
+      ? "LOGIN"
+      : before.type === "LOGIN" ? "LOGOUT" : "LOGIN"
+    const secondType: "LOGIN" | "LOGOUT" = firstType === "LOGOUT" ? "LOGIN" : "LOGOUT"
+
+    const r1 = db.prepare(
+      `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes) VALUES (?, ?, ?, 'manual', 'via manual', ?)`
+    ).run(firstTs, date, firstType, notes ?? null)
+    firstId = r1.lastInsertRowid as number
+
+    const r2 = db.prepare(
+      `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes) VALUES (?, ?, ?, 'manual', 'via manual', ?)`
+    ).run(secondTs, date, secondType, notes ?? null)
+    secondId = r2.lastInsertRowid as number
+
+    // Full alternating check after both insertions
+    const sorted = db
+      .prepare("SELECT * FROM entries WHERE date = ? ORDER BY timestamp ASC, id ASC")
+      .all(date) as DBEntry[]
+
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].type === sorted[i - 1].type) {
+        const label = sorted[i].type === "LOGIN" ? "logins" : "logouts"
+        throw new Error(
+          `Invalid times — creates two consecutive ${label}. Adjust the times to fit the existing sequence.`
+        )
+      }
+    }
+  })
+
+  run()
+  snapshotWorkWindowIfNeeded(date)
+  return [getEntryById(firstId)!, getEntryById(secondId)!]
 }
 
 export function getEntriesByDate(date: string): DBEntry[] {
@@ -225,17 +333,34 @@ export function updateEntry(
 
   const newTimestamp = updates.timestamp || entry.timestamp
   const newDate = new Date(newTimestamp).toLocaleDateString("en-CA")
-  const newType = updates.type || entry.type
+  const newType = (updates.type as "LOGIN" | "LOGOUT") || entry.type
   const newNotes = updates.notes !== undefined ? updates.notes : entry.notes
 
-  db.prepare(
-    `
-    UPDATE entries
-    SET timestamp = ?, date = ?, type = ?, notes = ?, modified_at = datetime('now')
-    WHERE id = ?
-  `
-  ).run(newTimestamp, newDate, newType, newNotes, id)
+  // Validate that the edit doesn't invert a LOGIN/LOGOUT pair
+  const runUpdate = db.transaction(() => {
+    db.prepare(
+      `UPDATE entries
+       SET timestamp = ?, date = ?, type = ?, notes = ?, modified_at = datetime('now')
+       WHERE id = ?`
+    ).run(newTimestamp, newDate, newType, newNotes, id)
 
+    // Re-read all entries for the affected date, sorted chronologically
+    const sorted = (db
+      .prepare("SELECT * FROM entries WHERE date = ? ORDER BY timestamp ASC, id ASC")
+      .all(newDate) as DBEntry[])
+
+    // Full alternating sequence check — any two adjacent same-type entries = corrupt
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].type === sorted[i - 1].type) {
+        const label = sorted[i].type === "LOGIN" ? "logins" : "logouts"
+        throw new Error(
+          `Invalid time — this creates two consecutive ${label}. Adjust to keep the sequence alternating (in, out, in, out…).`
+        )
+      }
+    }
+  })
+
+  runUpdate()
   return getEntryById(id)!
 }
 
@@ -263,10 +388,16 @@ export function calculateTotalSecondsForDate(date: string): number {
     }
   }
 
-  // If currently logged in, add time until now
+  // If currently logged in (or unclosed session on past date), cap appropriately
   if (loginTime) {
-    const now = new Date()
-    totalSeconds += (now.getTime() - loginTime.getTime()) / 1000
+    const today = new Date().toLocaleDateString("en-CA")
+    if (date === today) {
+      totalSeconds += (Date.now() - loginTime.getTime()) / 1000
+    } else {
+      // Past date: cap at local end-of-day — never bleed into today
+      const endOfDay = new Date(`${date}T23:59:59.999`).getTime()
+      totalSeconds += Math.max(0, endOfDay - loginTime.getTime()) / 1000
+    }
   }
 
   return Math.max(0, Math.floor(totalSeconds))
@@ -537,11 +668,17 @@ function sumSessionsWithWindow(
     }
   }
 
-  // If currently logged in, clamp "now" to the ranges
+  // If currently logged in (or unclosed session on past date), cap appropriately
   if (loginTime !== null) {
-    const now = Date.now()
+    const today = new Date().toLocaleDateString("en-CA")
+    let cap: number
+    if (date === today) {
+      cap = Date.now()
+    } else {
+      cap = new Date(`${date}T23:59:59.999`).getTime()
+    }
     for (const [rStart, rEnd] of ranges) {
-      totalSeconds += clampedDuration(loginTime, now, rStart, rEnd)
+      totalSeconds += clampedDuration(loginTime, cap, rStart, rEnd)
     }
   }
 
@@ -564,4 +701,29 @@ export function closeDatabase(): void {
   if (db) {
     db.close()
   }
+}
+
+/**
+ * Find the paired counterpart of an entry (LOGIN↔LOGOUT adjacency in sorted order).
+ * sortedEntries must be sorted by (timestamp ASC, id ASC).
+ */
+export function findPairedEntry(sortedEntries: DBEntry[], targetId: number): DBEntry | null {
+  const idx = sortedEntries.findIndex(e => e.id === targetId)
+  if (idx === -1) return null
+  const target = sortedEntries[idx]
+
+  if (target.type === "LOGIN") {
+    // Walk forward: next LOGOUT with no intervening LOGIN
+    for (let i = idx + 1; i < sortedEntries.length; i++) {
+      if (sortedEntries[i].type === "LOGOUT") return sortedEntries[i]
+      if (sortedEntries[i].type === "LOGIN") break
+    }
+  } else {
+    // Walk backward: most recent LOGIN with no intervening LOGOUT
+    for (let i = idx - 1; i >= 0; i--) {
+      if (sortedEntries[i].type === "LOGIN") return sortedEntries[i]
+      if (sortedEntries[i].type === "LOGOUT") break
+    }
+  }
+  return null
 }

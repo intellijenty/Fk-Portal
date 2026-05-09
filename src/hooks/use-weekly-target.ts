@@ -74,8 +74,8 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
     const mark = dayMarks.get(today)
     const floor = mark === "hl" ? 240 : 360 // HL=4h, full day=6h minimum
 
-    // How many minutes still needed to reach 40h (subtract today's already-worked minutes)
-    const remaining = Math.max(0, WEEKLY_TARGET_MIN - workedBeforeToday - todayLiveMinutes)
+    // Total minutes needed today to hit 40h — portal-total-card subtracts worked, so don't pre-subtract here
+    const remaining = Math.max(0, WEEKLY_TARGET_MIN - workedBeforeToday)
     // Never go below floor; no ceiling (can exceed 8h to catch up)
     const adjusted = Math.max(floor, remaining)
     const isAdjusted = adjusted !== 480
@@ -86,7 +86,7 @@ export function useWeeklyTarget(todayLiveMinutes = 0): WeeklyTargetResult {
     } else if (remaining > 480) {
       tooltipText = `Target Extended to ${fmtHM(adjusted)}. Today needs a bit extra to reach weekly target.`
     } else {
-      tooltipText = `Target Reduced to ${fmtHM(adjusted)}. Only ${fmtHM(remaining)} needed to hit weekly target.`
+      tooltipText = `Target Reduced to ${fmtHM(adjusted)}.${adjusted !== remaining ? ` Only ${fmtHM(remaining)} needed to hit weekly target.` : ""}`
     }
 
     return { adjustedTargetMinutes: adjusted, weeklyComplete, tooltipText, isAdjusted, source: "weekly-adjusted" }

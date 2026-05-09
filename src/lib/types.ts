@@ -10,6 +10,8 @@ export type EntryTrigger =
   | "via sleep"
   | "via estimated"
   | "via quit"
+  | "via midnight"
+  | "auto-compensate"
 
 export interface PunchEntry {
   id: number
@@ -203,7 +205,10 @@ export interface ElectronAPI {
     id: number,
     updates: { timestamp?: string; type?: EntryType; notes?: string }
   ) => Promise<PunchEntry>
-  deleteEntry: (id: number) => Promise<void>
+  deleteEntry: (id: number) => Promise<{ willOrphan: number | null }>
+  deleteEntryConfirmed: (id: number) => Promise<void>
+  deleteEntryPair: (id: number) => Promise<void>
+  addEntryPair: (data: { date: string; time1: string; time2: string }) => Promise<{ firstEntry: PunchEntry; secondEntry: PunchEntry }>
   getSettings: () => Promise<AppSettings>
   updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>
   onEventUpdate: (callback: () => void) => () => void

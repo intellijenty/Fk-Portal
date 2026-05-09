@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     updates: { timestamp?: string; type?: string; notes?: string }
   ) => ipcRenderer.invoke("edit-entry", id, updates),
   deleteEntry: (id: number) => ipcRenderer.invoke("delete-entry", id),
+  deleteEntryConfirmed: (id: number) => ipcRenderer.invoke("delete-entry-confirmed", id),
+  deleteEntryPair: (id: number) => ipcRenderer.invoke("delete-entry-pair", id),
+  addEntryPair: (data: { date: string; time1: string; time2: string }) =>
+    ipcRenderer.invoke("add-entry-pair", data),
   getSettings: () => ipcRenderer.invoke("get-settings"),
   updateSettings: (settings: Record<string, unknown>) =>
     ipcRenderer.invoke("update-settings", settings),

@@ -120,6 +120,11 @@ function handlePunchOut(): void {
 function handleQuit(): void {
   isQuitting = true
 
+  if (midnightTimer) {
+    clearTimeout(midnightTimer)
+    midnightTimer = null
+  }
+
   const lastEntry = getLastEntry()
   if (lastEntry?.type === "LOGIN") {
     insertEntry("LOGOUT", "auto", "via quit")
@@ -135,19 +140,63 @@ function handleQuit(): void {
 
 function handleStartupRecovery(): void {
   const lastEntry = getLastEntry()
+  if (!lastEntry || lastEntry.type !== "LOGIN") return
 
-  if (lastEntry && lastEntry.type === "LOGIN") {
-    const heartbeat = readHeartbeat()
-    const estimatedTime = heartbeat?.timestamp || lastEntry.timestamp
+  const heartbeat = readHeartbeat()
+  let estimatedTime = lastEntry.timestamp
 
-    insertEntry(
-      "LOGOUT",
-      "estimated",
-      "via estimated",
-      estimatedTime,
-      "Session ended unexpectedly. Logout time estimated from last heartbeat."
-    )
+  if (heartbeat) {
+    const heartbeatTime = new Date(heartbeat.timestamp).getTime()
+    const loginTime = new Date(lastEntry.timestamp).getTime()
+    const ageMs = Date.now() - heartbeatTime
+    // Only trust heartbeat if it is after the last LOGIN and not stale (< 30 min old)
+    if (heartbeatTime >= loginTime && ageMs < 30 * 60 * 1000) {
+      estimatedTime = heartbeat.timestamp
+    }
   }
+
+  const loginDate = new Date(lastEntry.timestamp).toLocaleDateString("en-CA")
+  const estimatedDate = new Date(estimatedTime).toLocaleDateString("en-CA")
+
+  if (estimatedDate !== loginDate) {
+    // Session crossed midnight — close previous day at 23:59:59, open new day at 00:00:00, then close at estimated time
+    const eodTs = new Date(`${loginDate}T23:59:59.999`).toISOString()
+    const sodTs = new Date(`${estimatedDate}T00:00:00.000`).toISOString()
+    insertEntry("LOGOUT", "estimated", "via estimated", eodTs, "Auto-closed at midnight — session continued past midnight")
+    insertEntry("LOGIN", "estimated", "via estimated", sodTs, "Auto-opened at midnight — session continued from previous day")
+    insertEntry("LOGOUT", "estimated", "via estimated", estimatedTime, "Session ended unexpectedly. Logout time estimated from last heartbeat.")
+  } else {
+    insertEntry("LOGOUT", "estimated", "via estimated", estimatedTime, "Session ended unexpectedly. Logout time estimated from last heartbeat.")
+  }
+}
+
+let midnightTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleMidnightSplit(): void {
+  if (midnightTimer) clearTimeout(midnightTimer)
+  const now = new Date()
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0)
+  midnightTimer = setTimeout(() => {
+    handleMidnightSplit()
+    scheduleMidnightSplit()
+  }, tomorrow.getTime() - now.getTime())
+}
+
+function handleMidnightSplit(): void {
+  const lastEntry = getLastEntry()
+  if (!lastEntry || lastEntry.type !== "LOGIN") return
+
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const prevDate = yesterday.toLocaleDateString("en-CA")
+  const today = getLocalDate()
+
+  const eodTs = new Date(`${prevDate}T23:59:59.999`).toISOString()
+  const sodTs = new Date(`${today}T00:00:00.000`).toISOString()
+
+  insertEntry("LOGOUT", "auto", "via midnight", eodTs, "Auto-closed at midnight")
+  insertEntry("LOGIN", "auto", "via midnight", sodTs, "Auto-opened at midnight")
+  notifyRenderer()
 }
 
 function createWindow(): void {
@@ -219,8 +268,11 @@ app.whenReady().then(() => {
   const startupSettings = getAllSettings()
   syncLoginItem(startupSettings.autoStart !== "false")
 
-  // Boot login entry
-  insertEntry("LOGIN", "auto", "via boot")
+  // Boot login entry — only if last known state is LOGOUT (or no history)
+  const lastAfterRecovery = getLastEntry()
+  if (!lastAfterRecovery || lastAfterRecovery.type === "LOGOUT") {
+    insertEntry("LOGIN", "auto", "via boot")
+  }
 
   // Start services
   startHeartbeat(60)
@@ -244,6 +296,9 @@ app.whenReady().then(() => {
   // Tray
   createTray(mainWindow, handlePunchIn, handlePunchOut, handleQuit)
   refreshTray()
+
+  // Midnight auto-split (closes open session at day boundary)
+  scheduleMidnightSplit()
 
   // Daily background sync
   scheduleDailySync(notifyRenderer)
