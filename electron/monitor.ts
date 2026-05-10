@@ -77,11 +77,13 @@ export function startMonitoring(
 
   powerMonitor.on("suspend", () => {
     clearAllTimers()
-    if (!isLocked) {
+    // Use DB as source of truth — isLocked=true does NOT guarantee a LOGOUT was
+    // recorded (debounce may have been cancelled by a quick lock→unlock sequence)
+    const last = getLastEntry()
+    if (!last || last.type === "LOGIN") {
       isLocked = true
       logEvent("LOGOUT", "via sleep")
     }
-    // if already locked: already have a LOGOUT, skip duplicate
   })
 
   powerMonitor.on("resume", () => {
@@ -100,7 +102,8 @@ export function startMonitoring(
 
   powerMonitor.on("shutdown", () => {
     clearAllTimers()
-    if (!isLocked) {
+    const last = getLastEntry()
+    if (!last || last.type === "LOGIN") {
       isLocked = true
       logEvent("LOGOUT", "via shutdown")
     }

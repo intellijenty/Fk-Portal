@@ -48,6 +48,8 @@ import { OnboardingController } from "@/components/onboarding/onboarding-control
 import LicenseMonitor from "./components/LicenseMonitor"
 import { Badge } from "./components/ui/badge"
 import { TitleBar } from "./components/ui/title-bar"
+import type { Page } from "@/lib/navigation"
+import { EodPage } from "@/pages/eod-page"
 
 const isElectron = typeof window !== "undefined" && !!window.electronAPI
 
@@ -504,6 +506,7 @@ function WeeklyCompleteGlow({ visible }: { visible: boolean }) {
 interface AppInnerProps {
   isUltraWide: boolean
   isWide: boolean
+  activePage: Page
   selectedDate: string
   onSelectDate: (date: string) => void
   dayMarks: Map<string, import("@/lib/week-utils").DayMark>
@@ -526,6 +529,7 @@ interface AppInnerProps {
 function AppInner({
   isUltraWide,
   isWide,
+  activePage,
   selectedDate,
   onSelectDate,
   dayMarks,
@@ -538,33 +542,33 @@ function AppInner({
 }: AppInnerProps) {
   const { weeklyComplete } = useWeeklyTarget()
 
+  const homeLayoutProps = {
+    selectedDate,
+    onSelectDate,
+    dayMarks,
+    onCycleMark,
+    onSetMark,
+    workWindows,
+    onSetWorkWindow,
+    onDeleteWorkWindow,
+    nightShift,
+  }
+
   return (
     <>
       <WeeklyCompleteGlow visible={weeklyComplete} />
       {isUltraWide ? (
-        <UltraWideLayout
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          dayMarks={dayMarks}
-          onCycleMark={onCycleMark}
-          onSetMark={onSetMark}
-          workWindows={workWindows}
-          onSetWorkWindow={onSetWorkWindow}
-          onDeleteWorkWindow={onDeleteWorkWindow}
-          nightShift={nightShift}
-        />
+        activePage === "home" ? (
+          <UltraWideLayout {...homeLayoutProps} />
+        ) : (
+          <EodPage />
+        )
       ) : isWide ? (
-        <WideLayout
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          dayMarks={dayMarks}
-          onCycleMark={onCycleMark}
-          onSetMark={onSetMark}
-          workWindows={workWindows}
-          onSetWorkWindow={onSetWorkWindow}
-          onDeleteWorkWindow={onDeleteWorkWindow}
-          nightShift={nightShift}
-        />
+        activePage === "home" ? (
+          <WideLayout {...homeLayoutProps} />
+        ) : (
+          <EodPage />
+        )
       ) : (
         <NarrowLayout selectedDate={selectedDate} onSelectDate={onSelectDate} />
       )}
@@ -579,6 +583,7 @@ export default function App() {
   const isUltraWide = width >= ULTRA_WIDE_BREAKPOINT
   const isWide = width >= WIDE_BREAKPOINT
   const [selectedDate, setSelectedDate] = useState(getLocalDate())
+  const [activePage, setActivePage] = useState<Page>("home")
   const { dayMarks, cycleMark, setMark } = useDayMarks()
   const { workWindows, setWorkWindow, deleteWorkWindow } = useWorkWindows()
   const { settings: generalSettings } = useGeneralSettings()
@@ -682,11 +687,16 @@ export default function App() {
         <AppNotifications />
         <OnboardingController isWide={isWide} />
         <div className="flex h-screen flex-col overflow-hidden bg-background">
-          <TitleBar />
+          <TitleBar
+            isWide={isWide}
+            activePage={activePage}
+            onPageChange={setActivePage}
+          />
           <div className="min-h-0 flex-1 overflow-hidden">
             <AppInner
               isUltraWide={isUltraWide}
               isWide={isWide}
+              activePage={activePage}
               selectedDate={selectedDate}
               onSelectDate={setSelectedDate}
               dayMarks={dayMarks}
