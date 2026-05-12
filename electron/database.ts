@@ -183,13 +183,9 @@ export function insertEntry(
         `Already ${type === "LOGIN" ? "checked in" : "checked out"} — add a ${oppLabel} before inserting another ${type === "LOGIN" ? "login" : "logout"}`
       )
     }
-    // Auto/estimated: insert a 1-second-earlier compensating entry to restore alternation
-    const compensatingType = type === "LOGIN" ? "LOGOUT" : "LOGIN"
-    const compensatingTs = new Date(new Date(now).getTime() - 1000).toISOString()
-    db.prepare(
-      `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes)
-       VALUES (?, ?, ?, 'estimated', 'auto-compensate', 'Inserted to restore sequence integrity')`
-    ).run(compensatingTs, localDate, compensatingType)
+    // Auto/estimated: skip silently — caller already checked DB state; duplicate means
+    // a race or out-of-sync event. Ghost compensating entries are worse than a no-op.
+    return getLastEntry()!
   }
 
   if (after && after.type === type) {
@@ -199,16 +195,8 @@ export function insertEntry(
         `Next entry is also a ${type === "LOGIN" ? "login" : "logout"} — add a ${oppLabel} between them first`
       )
     }
-    // Auto/estimated: insert compensating entry 1 second after the new entry
-    const compensatingType = type === "LOGIN" ? "LOGOUT" : "LOGIN"
-    const compensatingTs = new Date(new Date(now).getTime() + 1000).toISOString()
-    const compensatingDate = new Date(compensatingTs).toLocaleDateString("en-CA")
-    if (compensatingDate === localDate) {
-      db.prepare(
-        `INSERT INTO entries (timestamp, date, type, source, trigger_label, notes)
-         VALUES (?, ?, ?, 'estimated', 'auto-compensate', 'Inserted to restore sequence integrity')`
-      ).run(compensatingTs, localDate, compensatingType)
-    }
+    // Auto/estimated: skip silently — same reasoning as above.
+    return getLastEntry()!
   }
 
   const stmt = db.prepare(`

@@ -9,12 +9,10 @@ let debounceSeconds = 15
 let pendingLogout: { timestamp: string; trigger: string } | null = null
 let onChangeCallback: EventCallback | null = null
 
-// Lock state machine
-let isLocked = false
 let pendingUnlockTimer: ReturnType<typeof setTimeout> | null = null
 let resumeFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
-const UNLOCK_CONFIRM_MS = 3000  // cancel LOGIN if lock-screen re-fires within 3s (wrong password)
+const UNLOCK_CONFIRM_MS = 3000   // cancel LOGIN if lock-screen re-fires within 3s (wrong password)
 const RESUME_FALLBACK_MS = 10000 // if no unlock-screen after resume, assume no lock screen
 
 function clearAllTimers(): void {
@@ -28,6 +26,9 @@ function logEvent(
   trigger: string,
   timestamp?: string
 ): void {
+  // DB is source of truth — skip if already in this state (prevents ghost entries)
+  const last = getLastEntry()
+  if (last?.type === type) return
   insertEntry(type, "auto", trigger, timestamp)
   writeHeartbeat()
   onChangeCallback?.()
@@ -42,13 +43,12 @@ export function startMonitoring(
 
   powerMonitor.on("lock-screen", () => {
     if (pendingUnlockTimer) {
-      // lock-screen fired within 3s of unlock-screen → wrong password, stay locked
+      // lock-screen within 3s of unlock-screen → wrong password, cancel the pending LOGIN
       clearTimeout(pendingUnlockTimer)
       pendingUnlockTimer = null
       return
     }
-    isLocked = true
-    // Debounce LOGOUT in case user unlocks quickly
+    // Debounce LOGOUT — cancelled if user unlocks quickly
     const timestamp = new Date().toISOString()
     pendingLogout = { timestamp, trigger: "via lock" }
     if (debounceTimer) clearTimeout(debounceTimer)
@@ -62,37 +62,34 @@ export function startMonitoring(
   })
 
   powerMonitor.on("unlock-screen", () => {
-    if (!isLocked) return  // spurious unlock when already unlocked
-    // Cancel pending LOGOUT (debounce)
+    // Cancel pending LOGOUT debounce (user unlocked quickly)
     if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; pendingLogout = null }
-    // Cancel resume fallback — unlock-screen covers this
+    // Cancel resume fallback — real unlock covers it
     if (resumeFallbackTimer) { clearTimeout(resumeFallbackTimer); resumeFallbackTimer = null }
+    // Already waiting for unlock confirmation — don't stack timers
+    if (pendingUnlockTimer) return
     // Wait 3s to confirm this is a real unlock, not a wrong-password bounce
     pendingUnlockTimer = setTimeout(() => {
       pendingUnlockTimer = null
-      isLocked = false
       logEvent("LOGIN", "via unlock")
     }, UNLOCK_CONFIRM_MS)
   })
 
   powerMonitor.on("suspend", () => {
     clearAllTimers()
-    // Use DB as source of truth — isLocked=true does NOT guarantee a LOGOUT was
-    // recorded (debounce may have been cancelled by a quick lock→unlock sequence)
     const last = getLastEntry()
     if (!last || last.type === "LOGIN") {
-      isLocked = true
       logEvent("LOGOUT", "via sleep")
     }
   })
 
   powerMonitor.on("resume", () => {
-    if (isLocked) {
-      // Woke at lock screen — wait for unlock-screen before logging LOGIN
+    const last = getLastEntry()
+    if (last?.type === "LOGOUT") {
+      // Properly suspended — wait for unlock-screen before logging LOGIN
       resumeFallbackTimer = setTimeout(() => {
         resumeFallbackTimer = null
-        // No unlock-screen fired → system has no lock screen configured
-        isLocked = false
+        // No unlock-screen fired → no lock screen configured; log LOGIN directly
         logEvent("LOGIN", "via resume")
       }, RESUME_FALLBACK_MS)
     } else {
@@ -104,7 +101,6 @@ export function startMonitoring(
     clearAllTimers()
     const last = getLastEntry()
     if (!last || last.type === "LOGIN") {
-      isLocked = true
       logEvent("LOGOUT", "via shutdown")
     }
   })
