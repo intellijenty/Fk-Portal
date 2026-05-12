@@ -288,6 +288,15 @@ export interface ElectronAPI {
   onUpdateProgress: (cb: (p: { percent: number; transferred: number; total: number }) => void) => () => void
   onUpdateDownloaded: (cb: (info: { version: string }) => void) => () => void
   onUpdateError: (cb: (msg: string) => void) => () => void
+
+  // EOD Draft
+  eodOpenInOutlook: (payload: {
+    to: string
+    cc: string
+    subject: string
+    htmlBody: string
+    plainText: string
+  }) => Promise<void>
 }
 
 declare global {

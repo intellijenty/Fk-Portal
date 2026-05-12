@@ -13,6 +13,10 @@
  *     server failures do not cause repeated retries. The next app start will try again.
  */
 
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import ElectronStore from 'electron-store'
 import { syncLeaves, type LeaveSyncResult } from "./leave-sync"
 import { syncNonPermanentDays, type SyncSummary } from "./portal-sync"
 import { getSetting, setSetting } from "./database"
@@ -56,6 +60,70 @@ async function runSyncOperations(): Promise<Pick<DailySyncReport, "leaves" | "po
   return { leaves, portalDays }
 }
 
+const store = new ElectronStore()
+
+async function runEodTempCleanup(): Promise<void> {
+  try {
+    const now = Date.now()
+    const pending: string[] = store.get('pendingEodTempDirs') || []
+    const newPending: string[] = []
+
+    console.log('pending:', pending);
+
+    // Attempt cleanup of pending dirs older than 5 minutes
+    for (const dir of pending) {
+      try {
+        const st = fs.statSync(dir)
+        const ageMs = now - st.mtimeMs
+
+        if (ageMs >= 5 * 60 * 1000) {
+          // SAFETY CHECKS
+          const resolved = path.resolve(dir)
+          const tmpRoot = path.resolve(os.tmpdir())
+          const base = path.basename(resolved)
+
+          const isInsideTmp = resolved.startsWith(tmpRoot)
+          const hasExpectedPrefix = base.startsWith('traccia-eod-')
+
+          if (!isInsideTmp || !hasExpectedPrefix) {
+            console.warn('[eod-cleanup] Refusing to delete unsafe path:', resolved)
+            continue
+          }
+
+          try {
+            fs.rmSync(resolved, { recursive: true, force: true })
+          } catch {
+            newPending.push(dir)
+          }
+        } else {
+          newPending.push(dir)
+        }
+      } catch {
+        // If stat fails, drop it (likely already removed)
+      }
+    }
+
+    store.set('pendingEodTempDirs', newPending)
+
+    // Scan os.tmpdir for stray 'traccia-eod-' dirs older than 1 hour
+    const tmp = os.tmpdir()
+    const entries = fs.readdirSync(tmp)
+    for (const e of entries) {
+      if (!e.startsWith('traccia-eod-')) continue
+      const full = path.join(tmp, e)
+      try {
+        const st = fs.statSync(full)
+        if (now - st.mtimeMs >= 60 * 60 * 1000) {
+          try { fs.rmSync(full, { recursive: true, force: true }) } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    }
+    console.log('[eod-cleanup] Completed temp directory cleanup')
+  } catch (err) {
+    console.error('[eod-cleanup] Unexpected error during cleanup:', err)
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -70,6 +138,8 @@ export async function runDailySync(force = false): Promise<DailySyncReport> {
     console.log(`[daily-sync] Already synced today (${today}), skipping`)
     return { date: today, skipped: true, skipReason: "already_synced" }
   }
+
+  runEodTempCleanup().catch((err) => console.error('[eod-cleanup] Failed:', err))
 
   if (!getHrmsConnectionStatus().hasCredentials) {
     console.log("[daily-sync] No HRMS credentials configured, skipping")

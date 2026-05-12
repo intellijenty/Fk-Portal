@@ -1,4 +1,8 @@
 import { app, ipcMain, BrowserWindow, Notification, shell } from "electron"
+import os from "os"
+import fs from "fs"
+import path from "path"
+import { spawn } from "child_process"
 import { registerHotkey } from "./hotkey"
 import { syncLeaves } from "./leave-sync"
 import { checkForUpdates, downloadUpdate, quitAndInstall } from "./updater"
@@ -92,6 +96,133 @@ const NARROW_HEIGHT = 780
 
 const electronStore = new ElectronStore();
 const licenseEngine = new LicenseEngine();
+
+// ── Outlook COM helper ────────────────────────────────────────────────────────
+
+interface OutlookPayload {
+  to: string; cc: string; subject: string; htmlBody: string
+}
+
+async function openViaOutlookCOM(payload: OutlookPayload): Promise<void> {
+  // Create a per-operation temp directory to hold params and images. This allows
+  // atomic removal of all artifacts and makes housekeeping straightforward.
+  const prefix = path.join(os.tmpdir(), 'traccia-eod-')
+  const tempDir = fs.mkdtempSync(prefix)
+
+  const tempImageFiles: string[] = []
+  const cidMeta: Array<{ path: string; cid: string }> = []
+  let imgIdx = 0
+
+  const processedHtml = payload.htmlBody.replace(
+    /src="(data:image\/(png|jpe?g|gif|webp);base64,[^"]+)"/g,
+    (_match, dataUri: string, ext: string) => {
+      const cid = `eod-img-${imgIdx++}`
+      const fileExt = ext === 'jpeg' ? 'jpg' : ext
+      const tmpPath = path.join(tempDir, `${cid}.${fileExt}`)
+      const base64Data = dataUri.replace(/^data:image\/[^;]+;base64,/, '')
+      fs.writeFileSync(tmpPath, Buffer.from(base64Data, 'base64'))
+      tempImageFiles.push(tmpPath)
+      cidMeta.push({ path: tmpPath.replace(/\\/g, '/'), cid })
+      return `src="cid:${cid}"`
+    }
+  )
+
+  const paramsFile = path.join(tempDir, `eod-params-${Date.now()}.json`)
+  fs.writeFileSync(paramsFile, JSON.stringify({
+    to: payload.to,
+    cc: payload.cc,
+    subject: payload.subject,
+    htmlBody: processedHtml,
+    cidMeta,
+  }), 'utf-8')
+
+  const psPath = paramsFile.replace(/\\/g, '/')
+
+  const psScript = `
+    $ErrorActionPreference = 'Stop'
+    try {
+      $p = Get-Content -Path '${psPath}' -Raw -Encoding UTF8 | ConvertFrom-Json
+      $outlook = New-Object -ComObject Outlook.Application
+      $mail = $outlook.CreateItem(0)
+      if ($p.to) { $mail.To = $p.to }
+      if ($p.cc) { $mail.CC = $p.cc }
+      $mail.Subject  = $p.subject
+      $mail.HTMLBody = $p.htmlBody
+      if ($p.cidMeta) {
+        foreach ($img in $p.cidMeta) {
+          if (Test-Path $img.path) {
+            $att = $mail.Attachments.Add($img.path)
+            $att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x3712001F', $img.cid)
+            $att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x3716001E', 'inline')
+            $att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x7FFE000B', $true)
+          }
+        }
+      }
+      $mail.Display()
+      [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($outlook)
+    } finally {
+      Remove-Item -Path '${psPath}' -Force -ErrorAction SilentlyContinue
+      if ($p -and $p.cidMeta) {
+        foreach ($img in $p.cidMeta) {
+          Remove-Item -Path $img.path -Force -ErrorAction SilentlyContinue
+        }
+      }
+    }
+  `
+
+  // Helper: try to remove tempDir with a few attempts; if still failing,
+  // persist the path in electronStore for startup housekeeping.
+  const tryRemoveTempDir = (dir: string) => {
+    const maxAttempts = 3
+    let attempt = 0
+    while (attempt < maxAttempts) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true })
+        return true
+      } catch (err) {
+        attempt++
+      }
+    }
+    try {
+      const pending: string[] = electronStore.get('pendingEodTempDirs') || []
+      if (!pending.includes(dir)) {
+        pending.push(dir)
+        electronStore.set('pendingEodTempDirs', pending)
+      }
+    } catch { /* ignore */ }
+    return false
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const ps = spawn('powershell.exe', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript,
+    ], { stdio: ['ignore', 'ignore', 'pipe'] })
+
+    let stderrBuf = ''
+    let settled = false
+
+    ps.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
+
+    const settle = (fn: () => void) => { if (!settled) { settled = true; fn() } }
+
+    ps.on('error', (e) => settle(() => {
+      tryRemoveTempDir(tempDir)
+      reject(e)
+    }))
+
+    ps.on('close', (code) => settle(() => {
+      tryRemoveTempDir(tempDir)
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(stderrBuf.trim() || `PowerShell exited ${code}`))
+      }
+    }))
+
+    setTimeout(() => settle(() => { tryRemoveTempDir(tempDir); ps.unref(); resolve() }), 5000)
+  })
+}
+
 
 export function registerIpcHandlers(
   onDataChange: () => void,
@@ -525,6 +656,62 @@ export function registerIpcHandlers(
 
   ipcMain.handle("portal-sync-non-permanent", async () => {
     return syncNonPermanentDays()
+  })
+
+  // ── EOD Draft ──
+
+  ipcMain.handle("eod:open-in-outlook", async (_event, payload: {
+    to: string
+    cc: string
+    subject: string
+    htmlBody: string
+    plainText: string
+  }) => {
+    if (!payload.subject || !payload.htmlBody) {
+      throw new Error("subject and htmlBody are required")
+    }
+
+    // ── Primary: PowerShell COM — opens editable Outlook compose window ──
+    try {
+      await openViaOutlookCOM(payload)
+      return
+    } catch {
+      // COM unavailable (Outlook not installed, policy block, etc.) — fall through to EML
+    }
+
+    // ── Fallback: EML file + shell.openPath ──
+    const boundary = `eod-${Date.now()}`
+    const headerLines: string[] = []
+    if (payload.to) headerLines.push(`To: ${payload.to}`)
+    if (payload.cc) headerLines.push(`Cc: ${payload.cc}`)
+    headerLines.push(
+      `Subject: ${payload.subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    )
+    const normalizedPlainText = payload.plainText.replace(/\r?\n/g, '\r\n')
+    const eml = [
+      ...headerLines,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      `Content-Transfer-Encoding: 8bit`,
+      ``,
+      normalizedPlainText,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      `Content-Transfer-Encoding: 8bit`,
+      ``,
+      payload.htmlBody,
+      ``,
+      `--${boundary}--`,
+    ].join('\r\n')
+    const filePath = path.join(os.tmpdir(), `eod-draft-${Date.now()}.eml`)
+    fs.writeFileSync(filePath, eml, 'utf-8')
+    const openErr = await shell.openPath(filePath)
+    if (openErr) throw new Error(openErr)
+    setTimeout(() => fs.unlink(filePath, () => {}), 30_000)
   })
 
   // ── Daily sync ──

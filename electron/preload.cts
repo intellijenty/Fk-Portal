@@ -140,6 +140,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("update:error", fn)
     return () => ipcRenderer.removeListener("update:error", fn)
   },
+
+  // ── EOD Draft ──
+  eodOpenInOutlook: (payload: {
+    to: string
+    cc: string
+    subject: string
+    htmlBody: string
+    plainText: string
+  }) => ipcRenderer.invoke('eod:open-in-outlook', payload),
 })
 
 contextBridge.exposeInMainWorld('licenseAPI', {
