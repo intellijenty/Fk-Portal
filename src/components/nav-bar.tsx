@@ -1,42 +1,37 @@
-"use client";
+import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
+import type { Page } from "@/lib/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Edit01Icon, Home01Icon } from "@hugeicons/core-free-icons"
 
-import { useState } from "react";
+const LABEL_WIDTH = 80
+const LABEL_WIDTH_COMPACT = 60
 
-import { motion } from "framer-motion";
-import {
-  Home,
-  LineChart,
-  CreditCard,
-  MessageCircle,
-  Trophy,
-  User,
-} from "lucide-react";
-
-import { cn } from "@/lib/utils";
-
-const navItems = [
-  { label: "Home", icon: Home },
-  { label: "Portfolio", icon: LineChart },
-  { label: "Transactions", icon: CreditCard },
-  { label: "Messages", icon: MessageCircle },
-  { label: "Rewards", icon: Trophy },
-  { label: "Profile", icon: User },
-];
-
-const MOBILE_LABEL_WIDTH = 72;
+const navItems: {
+  id: Page
+  label: string
+  icon: any
+}[] = [
+  { id: "home", label: "Home", icon: Home01Icon },
+  { id: "eod", label: "EOD Draft", icon: Edit01Icon },
+]
 
 type NavBarProps = {
-  className?: string;
-  defaultIndex?: number;
-  stickyBottom?: boolean;
-};
+  className?: string
+  activePage?: string
+  onPageChange: (pageId: Page) => void
+  stickyBottom?: boolean
+  compact?: boolean
+}
 
 export function NavBar({
   className,
-  defaultIndex = 0,
+  activePage = "home",
+  onPageChange,
   stickyBottom = false,
+  compact = false,
 }: NavBarProps) {
-  const [activeIndex, setActiveIndex] = useState(defaultIndex);
+  const labelWidth = compact ? LABEL_WIDTH_COMPACT : LABEL_WIDTH
 
   return (
     <motion.nav
@@ -46,55 +41,62 @@ export function NavBar({
       role="navigation"
       aria-label="Bottom Navigation"
       className={cn(
-        "bg-card dark:bg-card border border-border dark:border-sidebar-border rounded-full flex items-center p-2 shadow-xl space-x-1 min-w-[320px] max-w-[95vw] h-[52px]",
-        stickyBottom && "fixed inset-x-0 bottom-4 mx-auto z-20 w-fit",
-        className,
+        "flex items-center space-x-1 rounded-full border border-border bg-card dark:border-sidebar-border dark:bg-card",
+        compact
+          ? "h-9 max-w-[95vw] min-w-0 p-1 shadow-sm"
+          : "h-13 max-w-[95vw] min-w-[320px] p-2 shadow-xl",
+        stickyBottom && "fixed inset-x-0 bottom-4 z-20 mx-auto w-fit",
+        className
       )}
     >
-      {navItems.map((item, idx) => {
-        const Icon = item.icon;
-        const isActive = activeIndex === idx;
+      {navItems.map((item) => {
+        const isActive = activePage === item.id
 
         return (
           <motion.button
             key={item.label}
             whileTap={{ scale: 0.97 }}
             className={cn(
-              "flex items-center gap-0 px-3 py-2 rounded-full transition-colors duration-200 relative h-10 min-w-[44px] min-h-[40px] max-h-[44px]",
+              "relative flex items-center justify-center rounded-full transition-colors duration-200",
+              compact
+                ? "h-7 min-h-7 min-w-9 px-2.5"
+                : "h-10 max-h-11 min-h-10 min-w-11 px-3 py-2",
               isActive
-                ? "bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary gap-2"
-                : "bg-transparent text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted",
-              "focus:outline-none focus-visible:ring-0",
+                ? "gap-2 bg-primary dark:bg-primary"
+                : "gap-0 text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-muted",
+              "focus:outline-none focus-visible:ring-0"
             )}
-            onClick={() => setActiveIndex(idx)}
+            onClick={() => onPageChange(item.id)}
             aria-label={item.label}
             type="button"
           >
-            <Icon
-              size={22}
+            <HugeiconsIcon
+              icon={item.icon}
+              size={compact ? 16 : 22}
               strokeWidth={2}
               aria-hidden
-              className="transition-colors duration-200"
+              className="shrink-0 transition-colors duration-200"
             />
-
             <motion.div
               initial={false}
               animate={{
-                width: isActive ? `${MOBILE_LABEL_WIDTH}px` : "0px",
+                width: isActive ? `${labelWidth}px` : "0px",
                 opacity: isActive ? 1 : 0,
-                marginLeft: isActive ? "8px" : "0px",
               }}
               transition={{
                 width: { type: "spring", stiffness: 350, damping: 32 },
                 opacity: { duration: 0.19 },
-                marginLeft: { duration: 0.19 },
               }}
-              className={cn("overflow-hidden flex items-center max-w-[72px]")}
+              className="flex items-center overflow-hidden"
+              style={{ maxWidth: `${labelWidth}px` }}
             >
               <span
                 className={cn(
-                  "font-medium text-xs whitespace-nowrap select-none transition-opacity duration-200 overflow-hidden text-ellipsis text-[clamp(0.625rem,0.5263rem+0.5263vw,1rem)] leading-[1.9]",
-                  isActive ? "text-primary dark:text-primary" : "opacity-0",
+                  "overflow-hidden font-medium text-ellipsis whitespace-nowrap transition-opacity duration-200 select-none",
+                  compact
+                    ? "text-xs leading-4"
+                    : "text-xs text-[clamp(0.625rem,0.5263rem+0.5263vw,1rem)] leading-[1.9]",
+                  isActive ? "" : "opacity-0"
                 )}
                 title={item.label}
               >
@@ -102,10 +104,10 @@ export function NavBar({
               </span>
             </motion.div>
           </motion.button>
-        );
+        )
       })}
     </motion.nav>
-  );
+  )
 }
 
-export default NavBar;
+export default NavBar
