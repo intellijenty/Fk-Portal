@@ -595,6 +595,7 @@ export default function App() {
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const pendingSettings = useRef(false)
+  const pendingPage = useRef<Page | null>(null)
   const prevIsWide = useRef(isWide)
 
   useEffect(() => {
@@ -609,6 +610,10 @@ export default function App() {
     if (!wasWide && isWide && pendingSettings.current) {
       pendingSettings.current = false
       window.dispatchEvent(new CustomEvent("traccia:open-settings"))
+    }
+    if (!wasWide && isWide && pendingPage.current) {
+      setActivePage(pendingPage.current)
+      pendingPage.current = null
     }
     if (wasWide && !isWide) {
       setSelectedDate(getLocalDate())
@@ -660,6 +665,14 @@ export default function App() {
     "close-window": () => {
       if (document.querySelector('[role="dialog"]')) return
       if (isElectron) window.electronAPI.windowHide()
+    },
+    "nav-home": () => {
+      if (!isWide) { pendingPage.current = "home"; if (isElectron) window.electronAPI.windowToggleSize() }
+      else setActivePage("home")
+    },
+    "nav-eod": () => {
+      if (!isWide) { pendingPage.current = "eod"; if (isElectron) window.electronAPI.windowToggleSize() }
+      else setActivePage("eod")
     },
     "week-prev": () => {
       if (!isWide) return

@@ -25,6 +25,8 @@ export type ShortcutId =
   | "week-prev"
   | "week-next"
   | "close-window"
+  | "nav-home"
+  | "nav-eod"
 
 export interface AppShortcut {
   id: ShortcutId
@@ -105,6 +107,20 @@ export const SHORTCUTS: readonly AppShortcut[] = [
     modifiers: { shift: true },
     label: "Keyboard Shortcuts",
     description: "Show keyboard shortcuts reference",
+    configurable: false,
+  },
+  {
+    id: "nav-home",
+    defaultKey: "h",
+    label: "Go to Home",
+    description: "Switch to the Home tab",
+    configurable: false,
+  },
+  {
+    id: "nav-eod",
+    defaultKey: "e",
+    label: "Go to EOD",
+    description: "Switch to the EOD Draft tab",
     configurable: false,
   },
 ] as const
