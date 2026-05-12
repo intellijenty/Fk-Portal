@@ -12,6 +12,7 @@ type ShortcutEntry = {
 
 const FORM_SHORTCUTS: ShortcutEntry[] = [
   { location: 'Project',      keys: ['Enter', { text: '/' }, 'Tab'], action: 'Focus first task (create if none)' },
+  { location: 'Any input item',   keys: ['Shift', 'Del'],                action: 'Delete Item' },
   { location: 'Task',         keys: ['Enter'],                        action: 'New task below' },
   { location: 'Task',         keys: ['Tab'],                          action: 'Indent → add / focus sub-bullet' },
   { location: 'Task',         keys: ['↑', '↓'],                      action: 'Navigate' },

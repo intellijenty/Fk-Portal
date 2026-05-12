@@ -518,7 +518,7 @@ export function FormEditor({ value, onChange, mode = 'comfortable' }: FormEditor
             </span>
             <span className='text-muted-foreground'>&middot;</span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Kbd>⌫</Kbd> delete (empty)
+              <KbdGroup><Kbd>Shift</Kbd><Kbd>Del</Kbd></KbdGroup> delete item
             </span>
           </div>}
         </div>
