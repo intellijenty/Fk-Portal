@@ -84,9 +84,7 @@ export function FormEditor({ value, onChange, mode = 'comfortable' }: FormEditor
   // Key to focus after next render (used when new items are created)
   const pendingFocus = useRef<string | null>(null)
 
-  // Auto-focus project input on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { focus('project') }, [])
+
 
   // After every render: apply pending focus
   useEffect(() => {

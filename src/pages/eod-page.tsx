@@ -30,6 +30,7 @@ import {
 import { EodHistoryPanel } from "@/components/eod/eod-history-panel"
 import { EodHistoryViewDialog } from "@/components/eod/eod-history-view-dialog"
 import { EodKeyboardDialog } from "@/components/eod/eod-keyboard-dialog"
+import { EodThemeProvider, EodThemeToggleButton } from "@/components/eod/eod-theme-toggle"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Refresh03Icon, Target02Icon } from "@hugeicons/core-free-icons"
 import { Toggle } from "@/components/ui/toggle"
@@ -345,6 +346,7 @@ export function EodPage() {
   return (
     <TooltipProvider delayDuration={500}>
       <div className="h-full p-6">
+        <EodThemeProvider>
         <div className="mb-0 flex h-full overflow-hidden rounded-lg border bg-background">
 
           {/* ── Left Sidebar ── */}
@@ -352,7 +354,7 @@ export function EodPage() {
             {/* Header */}
             <div className="px-6 pt-7 pb-6">
               <h1
-                className="text-lg font-semibold tracking-tight"
+                className="text-lg text-foreground font-semibold tracking-tight"
                 style={{ textWrap: "balance" } as React.CSSProperties}
               >
                 EOD Composer
@@ -385,7 +387,7 @@ export function EodPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <p
-                        className="cursor-pointer text-sm font-medium transition-colors hover:text-muted-foreground"
+                        className="cursor-pointer text-foreground text-sm font-medium transition-colors hover:text-muted-foreground"
                         onClick={() => setEditingSubject(true)}
                       >
                         {subject}
@@ -403,7 +405,7 @@ export function EodPage() {
                     <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                     To
                   </div>
-                  <p className="truncate pl-5.5 text-sm">{emailSettings.to}</p>
+                  <p className="truncate text-foreground pl-5.5 text-sm">{emailSettings.to}</p>
                 </div>
               )}
 
@@ -414,7 +416,7 @@ export function EodPage() {
                     <Users className="h-3.5 w-3.5" aria-hidden="true" />
                     CC
                   </div>
-                  <div className="space-y-0.5 pl-[22px]">
+                  <div className="space-y-0.5 pl-5.5 text-foreground">
                     {emailSettings.cc.map((email) => (
                       <p key={email} className="truncate text-sm">
                         {email}
@@ -597,6 +599,8 @@ export function EodPage() {
                   </Tooltip>
                 )}
 
+                <EodThemeToggleButton />
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -649,6 +653,7 @@ export function EodPage() {
             onOpenChange={setKeyboardDialogOpen}
           />
         </div>
+        </EodThemeProvider>
       </div>
     </TooltipProvider>
   )
