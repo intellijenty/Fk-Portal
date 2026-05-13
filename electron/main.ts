@@ -21,7 +21,7 @@ import {
   stopHeartbeat,
   clearHeartbeat,
 } from "./heartbeat"
-import { startMonitoring, flushPendingLogout } from "./monitor"
+import { startMonitoring } from "./monitor"
 import { createTray, updateTrayStatus, destroyTray } from "./tray"
 import { registerIpcHandlers } from "./ipc"
 import { registerHotkey, unregisterHotkey } from "./hotkey"
@@ -118,24 +118,8 @@ function handlePunchOut(): void {
 }
 
 function handleQuit(): void {
-  isQuitting = true
-
-  if (midnightTimer) {
-    clearTimeout(midnightTimer)
-    midnightTimer = null
-  }
-
-  const lastEntry = getLastEntry()
-  if (lastEntry?.type === "LOGIN") {
-    insertEntry("LOGOUT", "auto", "via quit")
-  }
-
-  flushPendingLogout()
-  stopHeartbeat()
-  clearHeartbeat()
-  closeDatabase()
   destroyTray()
-  app.quit()
+  app.quit() // cleanup runs in before-quit
 }
 
 function handleStartupRecovery(): void {
@@ -148,9 +132,9 @@ function handleStartupRecovery(): void {
   if (heartbeat) {
     const heartbeatTime = new Date(heartbeat.timestamp).getTime()
     const loginTime = new Date(lastEntry.timestamp).getTime()
-    const ageMs = Date.now() - heartbeatTime
-    // Only trust heartbeat if it is after the last LOGIN and not stale (< 30 min old)
-    if (heartbeatTime >= loginTime && ageMs < 30 * 60 * 1000) {
+    // Trust heartbeat as long as it postdates the last LOGIN — no age limit, since
+    // end-of-day shutdown means the heartbeat may be many hours old by next morning.
+    if (heartbeatTime >= loginTime) {
       estimatedTime = heartbeat.timestamp
     }
   }
@@ -276,7 +260,7 @@ app.whenReady().then(() => {
 
   // Start services
   startHeartbeat(60)
-  startMonitoring(notifyRenderer, 15)
+  startMonitoring(notifyRenderer)
 
   // Register IPC handlers
   registerIpcHandlers(notifyRenderer, () => mainWindow)
@@ -314,9 +298,28 @@ app.on("window-all-closed", () => {
   // App stays alive in tray — do not quit
 })
 
+let cleanupDone = false
+
 app.on("before-quit", () => {
+  if (cleanupDone) return
+  cleanupDone = true
+
+  // Distinguish system shutdown (before-quit fires without handleQuit) from user quit
+  const trigger = isQuitting ? "via quit" : "via shutdown"
   isQuitting = true
   unregisterHotkey()
+
+  if (midnightTimer) { clearTimeout(midnightTimer); midnightTimer = null }
+
+  const lastEntry = getLastEntry()
+  if (lastEntry?.type === "LOGIN") {
+    insertEntry("LOGOUT", "auto", trigger)
+  }
+
+  stopHeartbeat()
+  clearHeartbeat()
+  closeDatabase()
+  destroyTray()
 })
 
 app.on("activate", () => {
