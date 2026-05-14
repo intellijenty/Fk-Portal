@@ -77,6 +77,9 @@ export interface AppSettings {
   // Onboarding
   onboardingCompleted: boolean
   onboardingVersion: number
+  // Release notes
+  lastSeenVersion: string
+  releaseNotesPending: boolean
 }
 
 export interface WeekDaySummary {

@@ -84,6 +84,9 @@ function buildSettingsResponse(raw: Record<string, string>) {
     // Onboarding
     onboardingCompleted: raw.onboardingCompleted === "true",
     onboardingVersion: parseInt(raw.onboardingVersion ?? "1", 10),
+    // Release notes
+    lastSeenVersion: raw.lastSeenVersion || "",
+    releaseNotesPending: raw.releaseNotesPending === "true",
   }
 }
 

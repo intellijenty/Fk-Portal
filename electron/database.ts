@@ -148,6 +148,9 @@ export function initDatabase(): void {
     // Onboarding
     onboardingCompleted: "false",
     onboardingVersion: "1",
+    // Release notes
+    lastSeenVersion: "",
+    releaseNotesPending: "false",
   }
 
   const insertSetting = db.prepare(

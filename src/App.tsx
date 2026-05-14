@@ -45,6 +45,7 @@ import { useUpdater } from "@/hooks/use-updater"
 import { Toaster } from "@/components/ui/sonner"
 import { cn, computeLocalBreakSeconds } from "@/lib/utils"
 import { OnboardingController } from "@/components/onboarding/onboarding-controller"
+import { ReleaseNotesController } from "@/components/release-notes-controller"
 import LicenseMonitor from "./components/LicenseMonitor"
 import { Badge } from "./components/ui/badge"
 import { TitleBar } from "./components/ui/title-bar"
@@ -697,6 +698,7 @@ export default function App() {
         <AppUpdater />
         <AppNotifications />
         <OnboardingController isWide={isWide} />
+        <ReleaseNotesController />
         <div className="flex h-screen flex-col overflow-hidden bg-background">
           <TitleBar
             isWide={isWide}
