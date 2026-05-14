@@ -1,4 +1,4 @@
-## v0.2.1 — May 2026
+## v0.2.3 — May 2026
 
 ### New
 - **Release Notes** - See what changed on every update, right inside the app
