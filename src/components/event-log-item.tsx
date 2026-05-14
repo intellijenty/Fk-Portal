@@ -101,16 +101,14 @@ function isEntryInWorkWindow(
 
 interface EventLogItemProps {
   entry: PunchEntry
-  pairedEntryId: number | null
   isCorrupted?: boolean
   workWindow?: WorkWindow | null
   workMode?: "holiday" | "all" | "window"
-  onDeleteConfirmed: (id: number) => Promise<void>
-  onDeletePair: (id: number) => Promise<void>
+  onDelete: (id: number) => Promise<void>
   onEdit: (id: number, updates: { timestamp?: string; notes?: string }) => Promise<void>
 }
 
-export function EventLogItem({ entry, pairedEntryId, isCorrupted = false, workWindow, workMode = "all", onDeleteConfirmed, onDeletePair, onEdit }: EventLogItemProps) {
+export function EventLogItem({ entry, isCorrupted = false, workWindow, workMode = "all", onDelete, onEdit }: EventLogItemProps) {
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editTime, setEditTime] = useState("")
@@ -151,19 +149,10 @@ export function EventLogItem({ entry, pairedEntryId, isCorrupted = false, workWi
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  async function handleDeleteOnly() {
+  async function handleDelete() {
     setDeleting(true)
     try {
-      await onDeleteConfirmed(entry.id)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  async function handleDeletePair() {
-    setDeleting(true)
-    try {
-      await onDeletePair(entry.id)
+      await onDelete(entry.id)
     } finally {
       setDeleting(false)
     }
@@ -293,33 +282,16 @@ export function EventLogItem({ entry, pairedEntryId, isCorrupted = false, workWi
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete entry</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Remove this {isIn ? "login" : "logout"} entry at{" "}
-                    {formatTime(entry.timestamp)}?
-                    {pairedEntryId !== null && (
-                      <span className="mt-1.5 block rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-amber-400">
-                        This entry has a paired {isIn ? "logout" : "login"}. Deleting only this entry will leave it orphaned and its session time will be lost.
-                      </span>
-                    )}
+                    Remove this {isIn ? "IN" : "OUT"} entry at {formatTime(entry.timestamp)}? This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  {pairedEntryId !== null && (
-                    <AlertDialogAction
-                      onClick={handleDeletePair}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete both
-                    </AlertDialogAction>
-                  )}
                   <AlertDialogAction
-                    onClick={handleDeleteOnly}
-                    className={pairedEntryId !== null
-                      ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                      : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    }
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {pairedEntryId !== null ? "Delete only this" : "Delete"}
+                    Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

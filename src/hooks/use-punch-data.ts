@@ -303,10 +303,11 @@ export function usePunchData(date?: string) {
     [refresh]
   )
 
-  const deleteEntryConfirmed = useCallback(
+  const deleteEntry = useCallback(
     async (id: number) => {
       try {
-        if (isElectron) await window.electronAPI.deleteEntryConfirmed(id)
+        if (isElectron) await window.electronAPI.deleteEntry(id)
+        else mockDeleteEntry(id)
       } catch (err) {
         toast.error(getErrorMessage(err, "Failed to delete entry"))
         throw err
@@ -316,11 +317,11 @@ export function usePunchData(date?: string) {
     [refresh]
   )
 
-  const deleteEntryPair = useCallback(
-    async (id: number) => {
+  const deletePair = useCallback(
+    async (id1: number, id2: number) => {
       try {
-        if (isElectron) await window.electronAPI.deleteEntryPair(id)
-        else mockDeleteEntry(id)
+        if (isElectron) await window.electronAPI.deleteEntries([id1, id2])
+        else { mockDeleteEntry(id1); mockDeleteEntry(id2) }
       } catch (err) {
         toast.error(getErrorMessage(err, "Failed to delete entries"))
         throw err
@@ -360,8 +361,8 @@ export function usePunchData(date?: string) {
     punchOut,
     addEntry,
     editEntry,
-    deleteEntryConfirmed,
-    deleteEntryPair,
+    deleteEntry,
+    deletePair,
     addEntryPair,
     refresh,
   }

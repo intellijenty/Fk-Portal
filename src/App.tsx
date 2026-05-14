@@ -109,12 +109,11 @@ function NarrowLayout({
     status,
     events,
     loading,
-    lastUpdated,
     addEntry,
     addEntryPair,
     editEntry,
-    deleteEntryConfirmed,
-    deleteEntryPair,
+    deleteEntry,
+    deletePair,
   } = usePunchData(selectedDate)
 
   const headerDate = formatDateDisplay(selectedDate)
@@ -208,11 +207,10 @@ function NarrowLayout({
 
           <EventLog
             entries={events}
-            lastUpdated={lastUpdated}
             workWindow={status.workWindow}
             workMode={status.workMode}
-            onDeleteConfirmed={deleteEntryConfirmed}
-            onDeletePair={deleteEntryPair}
+            onDelete={deleteEntry}
+            onDeletePair={deletePair}
             onEdit={editEntry}
           />
         </div>
@@ -663,7 +661,7 @@ export default function App() {
       window.dispatchEvent(new CustomEvent("traccia:open-shortcuts"))
     },
     "close-window": () => {
-      if (document.querySelector('[role="dialog"]')) return
+      if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return
       if (isElectron) window.electronAPI.windowHide()
     },
     "nav-home": () => {

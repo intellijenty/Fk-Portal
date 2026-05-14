@@ -18,13 +18,12 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
     status,
     events,
     loading,
-    lastUpdated,
     isToday,
     addEntry,
     addEntryPair,
     editEntry,
-    deleteEntryConfirmed,
-    deleteEntryPair,
+    deleteEntry,
+    deletePair,
   } = usePunchData(date)
 
   if (loading || !status) {
@@ -85,11 +84,10 @@ export function DayView({ date, showHeader = false }: DayViewProps) {
         {/* Event log */}
         <EventLog
           entries={events}
-          lastUpdated={lastUpdated}
           workWindow={status.workWindow}
           workMode={status.workMode}
-          onDeleteConfirmed={deleteEntryConfirmed}
-          onDeletePair={deleteEntryPair}
+          onDelete={deleteEntry}
+          onDeletePair={deletePair}
           onEdit={editEntry}
         />
       </div>

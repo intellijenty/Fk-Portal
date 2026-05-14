@@ -15,7 +15,6 @@ import {
   insertEntryPair,
   updateEntry,
   deleteEntry,
-  findPairedEntry,
   calculateTotalSecondsForDate,
   calculateWorkingSecondsForDate,
   resolveEffectiveMode,
@@ -377,30 +376,12 @@ export function registerIpcHandlers(
   )
 
   ipcMain.handle("delete-entry", (_event, id: number) => {
-    const entry = getEntryById(id)
-    if (!entry) return { willOrphan: null }
-
-    const sorted = getEntriesByDate(entry.date)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)
-    const paired = findPairedEntry(sorted, id)
-
-    // Return orphan info to renderer — let renderer decide whether to delete pair
-    return { willOrphan: paired ? paired.id : null }
-  })
-
-  ipcMain.handle("delete-entry-confirmed", (_event, id: number) => {
     deleteEntry(id)
     onDataChange()
   })
 
-  ipcMain.handle("delete-entry-pair", (_event, id: number) => {
-    const entry = getEntryById(id)
-    if (!entry) return
-    const sorted = getEntriesByDate(entry.date)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)
-    const paired = findPairedEntry(sorted, id)
-    deleteEntry(id)
-    if (paired) deleteEntry(paired.id)
+  ipcMain.handle("delete-entries", (_event, ids: number[]) => {
+    ids.forEach(id => deleteEntry(id))
     onDataChange()
   })
 
