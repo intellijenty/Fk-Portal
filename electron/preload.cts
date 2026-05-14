@@ -147,7 +147,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     subject: string
     htmlBody: string
     plainText: string
-  }) => ipcRenderer.invoke('eod:open-in-outlook', payload),
+  }) => ipcRenderer.invoke('eod:open-in-outlook', payload) as Promise<{ method: 'com' | 'mailto' | 'eml' }>,
 })
 
 contextBridge.exposeInMainWorld('licenseAPI', {

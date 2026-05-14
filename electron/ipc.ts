@@ -96,10 +96,50 @@ const NARROW_HEIGHT = 780
 const electronStore = new ElectronStore();
 const licenseEngine = new LicenseEngine();
 
+// ── EML helper ───────────────────────────────────────────────────────────────
+
+// Returns null on success, or an error string if shell.openPath failed.
+async function openViaEml(payload: OutlookPayload): Promise<string | null> {
+  const boundary = `eod-${Date.now()}`
+  const headers: string[] = []
+  if (payload.to) headers.push(`To: ${payload.to}`)
+  if (payload.cc) headers.push(`Cc: ${payload.cc}`)
+  headers.push(
+    `Subject: ${payload.subject}`,
+    `X-Unsent: 1`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+  )
+  const plainText = (payload.plainText ?? '').replace(/\r?\n/g, '\r\n')
+  const eml = [
+    ...headers,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    plainText,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    payload.htmlBody,
+    ``,
+    `--${boundary}--`,
+  ].join('\r\n')
+
+  const filePath = path.join(os.tmpdir(), `eod-draft-${Date.now()}.eml`)
+  fs.writeFileSync(filePath, eml, 'utf-8')
+  const err = await shell.openPath(filePath)
+  setTimeout(() => fs.unlink(filePath, () => {}), 30_000)
+  return err || null
+}
+
 // ── Outlook COM helper ────────────────────────────────────────────────────────
 
 interface OutlookPayload {
-  to: string; cc: string; subject: string; htmlBody: string
+  to: string; cc: string; subject: string; htmlBody: string; plainText?: string
 }
 
 async function openViaOutlookCOM(payload: OutlookPayload): Promise<void> {
@@ -647,52 +687,25 @@ export function registerIpcHandlers(
     subject: string
     htmlBody: string
     plainText: string
-  }) => {
+  }): Promise<{ method: 'com' | 'mailto' | 'eml' }> => {
     if (!payload.subject || !payload.htmlBody) {
       throw new Error("subject and htmlBody are required")
     }
 
-    // ── Primary: PowerShell COM — opens editable Outlook compose window ──
+    // ── Primary: EML file + shell.openPath ──────────────────────────────────────
+    // shell.openPath routes to whatever the OS default .eml handler is.
+    // New Outlook users get New Outlook; classic Outlook users get classic.
+    // COM is kept as a fallback only for cases where EML routing fails.
+    const emlResult = await openViaEml(payload)
+    if (emlResult === null) return { method: 'eml' }
+
+    // ── Fallback: PowerShell COM (classic Outlook only) ──────────────────────
     try {
       await openViaOutlookCOM(payload)
-      return
-    } catch {
-      // COM unavailable (Outlook not installed, policy block, etc.) — fall through to EML
+      return { method: 'com' }
+    } catch (comErr) {
+      throw new Error(`Failed to open in Outlook. EML: ${emlResult} | COM: ${String(comErr)}`)
     }
-
-    // ── Fallback: EML file + shell.openPath ──
-    const boundary = `eod-${Date.now()}`
-    const headerLines: string[] = []
-    if (payload.to) headerLines.push(`To: ${payload.to}`)
-    if (payload.cc) headerLines.push(`Cc: ${payload.cc}`)
-    headerLines.push(
-      `Subject: ${payload.subject}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    )
-    const normalizedPlainText = payload.plainText.replace(/\r?\n/g, '\r\n')
-    const eml = [
-      ...headerLines,
-      ``,
-      `--${boundary}`,
-      `Content-Type: text/plain; charset=utf-8`,
-      `Content-Transfer-Encoding: 8bit`,
-      ``,
-      normalizedPlainText,
-      ``,
-      `--${boundary}`,
-      `Content-Type: text/html; charset=utf-8`,
-      `Content-Transfer-Encoding: 8bit`,
-      ``,
-      payload.htmlBody,
-      ``,
-      `--${boundary}--`,
-    ].join('\r\n')
-    const filePath = path.join(os.tmpdir(), `eod-draft-${Date.now()}.eml`)
-    fs.writeFileSync(filePath, eml, 'utf-8')
-    const openErr = await shell.openPath(filePath)
-    if (openErr) throw new Error(openErr)
-    setTimeout(() => fs.unlink(filePath, () => {}), 30_000)
   })
 
   // ── Daily sync ──

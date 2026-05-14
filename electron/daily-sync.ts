@@ -68,8 +68,6 @@ async function runEodTempCleanup(): Promise<void> {
     const pending: string[] = store.get('pendingEodTempDirs') || []
     const newPending: string[] = []
 
-    console.log('pending:', pending);
-
     // Attempt cleanup of pending dirs older than 5 minutes
     for (const dir of pending) {
       try {
@@ -105,11 +103,13 @@ async function runEodTempCleanup(): Promise<void> {
 
     store.set('pendingEodTempDirs', newPending)
 
-    // Scan os.tmpdir for stray 'traccia-eod-' dirs older than 1 hour
+    // Scan os.tmpdir for stray EOD temp files/dirs older than 1 hour
     const tmp = os.tmpdir()
     const entries = fs.readdirSync(tmp)
     for (const e of entries) {
-      if (!e.startsWith('traccia-eod-')) continue
+      const isEodDir = e.startsWith('traccia-eod-')
+      const isEodEml = e.startsWith('eod-draft-') && e.endsWith('.eml')
+      if (!isEodDir && !isEodEml) continue
       const full = path.join(tmp, e)
       try {
         const st = fs.statSync(full)
@@ -118,7 +118,6 @@ async function runEodTempCleanup(): Promise<void> {
         }
       } catch { /* ignore */ }
     }
-    console.log('[eod-cleanup] Completed temp directory cleanup')
   } catch (err) {
     console.error('[eod-cleanup] Unexpected error during cleanup:', err)
   }
